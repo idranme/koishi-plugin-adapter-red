@@ -1,0 +1,32 @@
+{
+  "name": "koishi-plugin-adapter-red",
+  "description": "Adapter for red-protocol",
+  "version": "0.0.2",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "license": "AGPL-3.0",
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin",
+    "adapter",
+    "red",
+    "red-protocol"
+  ],
+  "peerDependencies": {
+    "koishi": "^4.13.8"
+  },
+  "dependencies": {
+    "file-type": "^16.5.4",
+    "form-data": "^4.0.0"
+  },
+  "koishi": {
+    "description": {
+      "zh": "RedProtocol 适配器"
+    }
+  }
+}

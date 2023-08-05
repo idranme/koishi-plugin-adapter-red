@@ -1,0 +1,29 @@
+export interface SimpleProfileInfo {
+    uid: string;
+    qid: string;
+    uin: string;
+    nick: string;
+    remark: string;
+    longNick: string;
+    avatarUrl: string;
+    birthday_year: number;
+    birthday_month: number;
+    birthday_day: number;
+    sex: number;
+    topTime: string;
+    isBlock: boolean;
+    isMsgDisturb: boolean;
+    isSpecialCareOpen: boolean;
+    isSpecialCareZone: boolean;
+    ringId: string;
+    status: number;
+    extStatus: number;
+    categoryId: number;
+    onlyChat: boolean;
+    qzoneNotWatch: boolean;
+    qzoneNotWatched: boolean;
+    vipFlag: boolean;
+    yearVipFlag: boolean;
+    svipFlag: boolean;
+    vipLevel: number;
+}
