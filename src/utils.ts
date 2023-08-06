@@ -1,6 +1,7 @@
 import { Friend, WsEvents, Message, Group } from './types'
-import { Universal, h, Session, sleep } from 'koishi'
+import { Universal, h, Session, sleep, Dict } from 'koishi'
 import { RedBot } from './bot'
+import * as face from 'qface'
 
 export function genPack(type: string, payload: any) {
     return JSON.stringify({
@@ -11,7 +12,7 @@ export function genPack(type: string, payload: any) {
 
 export const decodeUser = (user: Friend): Universal.User => ({
     userId: user.uin,
-    avatar: user.avatarUrl + '640',
+    avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
     username: user.nick
 })
 
@@ -84,6 +85,19 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                     }
                 }
                 await getImage()
+            } else if (v.elementType === 6) {
+                const { faceText, faceIndex, faceType } = v.faceElement as Dict
+                const name = faceText ? faceText.slice(1) : face.get(faceIndex).QDes.slice(1)
+                elements.push(h('face', { id: faceIndex, name, platform: bot.platform, 'red:type': faceType }, [
+                    h.image(face.getUrl(faceIndex))
+                ]))
+            } else if (v.elementType === 7) {
+                /*const { sourceMsgIdInRecords, senderUid } = v.replyElement as Dict
+                session.quote = {
+                    userId: senderUid,
+                    messageId: sourceMsgIdInRecords
+                }
+                elements.push(h.quote(sourceMsgIdInRecords))*/
             }
         }
     }

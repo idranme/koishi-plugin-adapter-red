@@ -2,7 +2,7 @@ import { Bot, Context, Schema, Quester } from 'koishi'
 import { RedAdapter } from './adapter'
 import { Internal } from './types'
 import { RedMessageEncoder } from './message'
-import { decodeGuildMember, decodeGuild } from './utils'
+import { decodeGuildMember, decodeGuild, decodeUser } from './utils'
 
 export class RedBot extends Bot<RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
@@ -53,7 +53,7 @@ export class RedBot extends Bot<RedBot.Config> {
                 chatType: 2
             }
         })
-        if(data.result === 5){
+        if (data.result === 5) {
             await this.internal.recall({
                 msgIds: [messageId],
                 peer: {
@@ -63,6 +63,21 @@ export class RedBot extends Bot<RedBot.Config> {
                 }
             })
         }
+    }
+
+    async muteGuildMember(guildId: string, userId: string, duration?: number, reason?: string) {
+        await this.internal.muteMember({
+            group: guildId,
+            memList: [{
+                uin: userId,
+                timeStamp: + (duration / 1000).toFixed(0)
+            }]
+        })
+    }
+
+    async getFriendList() {
+        const data = await this.internal.getFriendList()
+        return data.map(decodeUser)
     }
 }
 

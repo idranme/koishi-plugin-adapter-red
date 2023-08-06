@@ -57,8 +57,10 @@ declare module './internal' {
     interface Internal {
         getSelfProfile(): Promise<Friend>
         getGroupList(): Promise<Group[]>
+        getFriendList(): Promise<Friend[]>
     }
 }
 
 Internal.define('/getSelfProfile', { GET: 'getSelfProfile' })
 Internal.define('/bot/groups', { GET: 'getGroupList' })
+Internal.define('/bot/friends', { GET: 'getFriendList' })
