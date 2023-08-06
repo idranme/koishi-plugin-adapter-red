@@ -1,4 +1,4 @@
-import { Friend, WsEvents, Message } from './types'
+import { Friend, WsEvents, Message, Group } from './types'
 import { Universal, h, Session, sleep } from 'koishi'
 import { RedBot } from './bot'
 
@@ -20,6 +20,18 @@ export const decodeAuthor = (meta: Message): Universal.Author => ({
     avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${meta.senderUin}&spec=640`,
     username: meta.sendNickName,
     nickname: meta.sendMemberName || meta.sendNickName,
+})
+
+export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
+    userId: detail.uin,
+    username: detail.nick,
+    avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${detail.uin}&spec=640`,
+    nickname: detail.nick
+})
+
+export const decodeGuild = (info: Group): Universal.Guild => ({
+    guildId: info.groupCode,
+    guildName: info.groupName
 })
 
 export async function decodeMessage(bot: RedBot, meta: Message, session: Partial<Session> = {}) {

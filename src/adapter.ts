@@ -23,13 +23,13 @@ export class RedAdapter extends Adapter.WsClient<RedBot> {
             if (session) this.bot.dispatch(session)
         })
 
-        this.bot.socket.send(genPack('meta::connect', {
-            token: this.bot.config.token
-        }))
-
         this.bot.internal._wsRequest = (type, payload) => {
             this.bot.socket.send(genPack(type, payload))
         }
+
+        this.bot.internal._wsRequest('meta::connect', {
+            token: this.bot.config.token
+        })
     }
 }
 

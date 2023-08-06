@@ -1,3 +1,5 @@
+import { Internal, Peer } from '.'
+
 export interface Message {
     msgId: string;
     msgRandom: string;
@@ -174,3 +176,16 @@ export interface RoleInfo {
     name: string;
     color: number;
 }
+
+export interface Recall {
+    msgIds: string[]
+    peer: Peer
+}
+
+declare module './internal' {
+    interface Internal {
+        recall(data: Recall): Promise<any>
+    }
+}
+
+Internal.define('/message/recall', { POST: 'recall' })

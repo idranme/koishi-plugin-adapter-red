@@ -2,6 +2,7 @@ import { Bot, Context, Schema, Quester } from 'koishi'
 import { RedAdapter } from './adapter'
 import { Internal } from './types'
 import { RedMessageEncoder } from './message'
+import { decodeGuildMember, decodeGuild } from './utils'
 
 export class RedBot extends Bot<RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
@@ -22,14 +23,46 @@ export class RedBot extends Bot<RedBot.Config> {
         ctx.plugin(RedAdapter, this)
     }
 
-    async getGuildList(){
+    async getGuildList() {
         const data = await this.internal.getGroupList()
-        return data.map((v)=>{
-            return {
-                guildId: v.groupCode,
-                guildName: v.groupName
+        return data.map(decodeGuild)
+    }
+
+    async kickGuildMember(guildId: string, userId: string, permanent?: boolean) {
+        await this.internal.kick({
+            group: guildId,
+            uidList: [userId],
+            refuseForever: permanent,
+        })
+    }
+
+    async getGuildMemberList(guildId: string) {
+        const data = await this.internal.getMemberList({
+            group: guildId,
+            size: 3000
+        })
+        return data.map(decodeGuildMember)
+    }
+
+    async deleteMessage(channelId: string, messageId: string) {
+        const data = await this.internal.recall({
+            msgIds: [messageId],
+            peer: {
+                guildId: null,
+                peerUin: channelId,
+                chatType: 2
             }
         })
+        if(data.result === 5){
+            await this.internal.recall({
+                msgIds: [messageId],
+                peer: {
+                    guildId: null,
+                    peerUin: channelId,
+                    chatType: 1
+                }
+            })
+        }
     }
 }
 
