@@ -67,7 +67,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             picElement: {
                 md5HexStr: file.md5,
                 fileSize: file.fileSize,
-                fileName: file.md5 + '.' + file.ntFilePath.split('.')[1],
+                fileName: file.md5 + '.' + file.ntFilePath.split('.').slice(-1),
                 sourcePath: file.ntFilePath,
                 picHeight: file.imageInfo.height,
                 picWidth: file.imageInfo.width
