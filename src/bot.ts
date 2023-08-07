@@ -88,7 +88,8 @@ export namespace RedBot {
 
     export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
-            token: Schema.string().description('机器人的用户令牌。').role('secret').required(),
+            token: Schema.string().description('用户令牌。').role('secret').required(),
+            selfId: Schema.string().description('机器人的账号。').required(),
         }),
         RedAdapter.Config,
         Quester.createConfig('http://127.0.0.1:16530'),

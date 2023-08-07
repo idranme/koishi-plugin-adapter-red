@@ -6,6 +6,7 @@ import { WsEvents } from './types'
 export class RedAdapter extends Adapter.WsClient<RedBot> {
     async prepare() {
         const { host } = new URL(this.bot.config.endpoint)
+        this.bot.selfId = this.bot.config.selfId
         return this.bot.http.ws('ws://' + host)
     }
 
@@ -13,7 +14,10 @@ export class RedAdapter extends Adapter.WsClient<RedBot> {
         this.bot.socket.addEventListener('message', async ({ data }) => {
             const parsed: WsEvents = JSON.parse(data.toString())
             if (parsed.type === 'meta::connect') {
-                this.bot.selfId = (parsed as WsEvents<'ConnectRecv'>).payload.authData.uin
+                const selfId = (parsed as WsEvents<'ConnectRecv'>).payload.authData.uin
+                if (selfId !== this.bot.selfId){
+                    return this.bot.socket.close(1008, `invalid selfId: ${selfId}`)
+                }
                 const user = decodeUser(await this.bot.internal.getSelfProfile())
                 Object.assign(this.bot, user)
                 return this.bot.online()
