@@ -80,7 +80,7 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                         const { data, mime } = await bot.ctx.http.file(fileUrl)
                         elements.push(h.image(data, mime))
                     } catch {
-                        await sleep(75)
+                        await sleep(85)
                         await getImage()
                     }
                 }
