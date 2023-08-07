@@ -57,7 +57,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             ? new Blob([data], { type: mime })
             : Buffer.from(data)
         payload.append('file', value)
-        return await this.bot.internal.uploadFile(payload)
+        return this.bot.internal.uploadFile(payload)
     }
 
     private async image(attrs: Dict) {
@@ -67,7 +67,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             picElement: {
                 md5HexStr: file.md5,
                 fileSize: file.fileSize,
-                fileName: file.md5 + '.' + file.imageInfo.type,
+                fileName: file.md5 + '.' + file.ntFilePath.split('.')[1],
                 sourcePath: file.ntFilePath,
                 picHeight: file.imageInfo.height,
                 picWidth: file.imageInfo.width
