@@ -1,5 +1,4 @@
 import { Quester, makeArray, Dict } from 'koishi'
-import FormData from 'form-data'
 
 export class Internal {
     _wsRequest?(type: string, payload: Dict): void
@@ -19,9 +18,6 @@ export class Internal {
                         if (method === 'GET' || method === 'DELETE') {
                             config.params = args[0]
                         } else {
-                            if (method === 'POST' && args[0] instanceof FormData) {
-                                config.headers = args[0].getHeaders()
-                            }
                             config.data = args[0]
                         }
                     } else if (args.length === 2 && method !== 'GET' && method !== 'DELETE') {

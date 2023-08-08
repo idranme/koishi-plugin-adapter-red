@@ -1,7 +1,8 @@
 import { Friend, WsEvents, Message, Group } from './types'
-import { Universal, h, Session, sleep, Dict } from 'koishi'
+import { Universal, h, Session, Dict } from 'koishi'
 import { RedBot } from './bot'
 import * as face from 'qface'
+import FileType from 'file-type'
 
 export function genPack(type: string, payload: any) {
     return JSON.stringify({
@@ -69,7 +70,6 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                 elements.push(h.text(v.textElement.content))
             } else if (v.elementType === 2) {
                 // image
-                const { thumbFileSize, picSubType } = v.picElement
                 // picsubtype 为0是图片 为1是动画表情
                 const file = await bot.http.axios('/message/fetchRichMedia', {
                     method: 'POST',
@@ -78,19 +78,22 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                         chatType: meta.chatType,
                         peerUid: meta.peerUin,
                         elementId: v.elementId,
-                        thumbSize: thumbFileSize,
-                        downloadType: picSubType
+                        thumbSize: 0,
+                        downloadType: 2
                     },
                     responseType: 'arraybuffer'
                 })
-                elements.push(h.image(file.data, file.headers['content-type']))
+                const { mime } = await FileType.fromBuffer(file.data)
+                elements.push(h.image(file.data, mime))
             } else if (v.elementType === 6) {
+                // face
                 const { faceText, faceIndex, faceType } = v.faceElement as Dict
                 const name = faceText ? faceText.slice(1) : face.get(faceIndex).QDes.slice(1)
                 elements.push(h('face', { id: faceIndex, name, platform: bot.platform, 'red:type': faceType }, [
                     h.image(face.getUrl(faceIndex))
                 ]))
             } else if (v.elementType === 7) {
+                // quote
                 /*const { sourceMsgIdInRecords, senderUid } = v.replyElement as Dict
                 session.quote = {
                     userId: senderUid,
