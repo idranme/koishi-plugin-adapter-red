@@ -20,6 +20,7 @@ export class RedBot extends Bot<RedBot.Config> {
             },
         })
         this.internal = new Internal(this.http)
+        this.platform = 'red'
         ctx.plugin(RedAdapter, this)
     }
 
@@ -95,5 +96,3 @@ export namespace RedBot {
         Quester.createConfig('http://127.0.0.1:16530'),
     ])
 }
-
-RedBot.prototype.platform = 'red'

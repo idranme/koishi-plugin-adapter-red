@@ -69,22 +69,21 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                 elements.push(h.text(v.textElement.content))
             } else if (v.elementType === 2) {
                 // image
-                const { sourcePath, picSubType } = v.picElement
+                const { thumbFileSize, picSubType } = v.picElement
                 // picsubtype 为0是图片 为1是动画表情
-                let fileUrl = 'file:///' + sourcePath.replaceAll('\\', '/')
-                if (picSubType === 0) {
-                    fileUrl = fileUrl.replace('Ori', 'Thumb').replace('Ori', 'Thumb').replace('.', '_720.')
-                }
-                const getImage = async () => {
-                    try {
-                        const { data, mime } = await bot.ctx.http.file(fileUrl)
-                        elements.push(h.image(data, mime))
-                    } catch {
-                        await sleep(85)
-                        await getImage()
-                    }
-                }
-                await getImage()
+                const file = await bot.http.axios('/message/fetchRichMedia', {
+                    method: 'POST',
+                    data: {
+                        msgId: meta.msgId,
+                        chatType: meta.chatType,
+                        peerUid: meta.peerUin,
+                        elementId: v.elementId,
+                        thumbSize: thumbFileSize,
+                        downloadType: picSubType
+                    },
+                    responseType: 'arraybuffer'
+                })
+                elements.push(h.image(file.data, file.headers['content-type']))
             } else if (v.elementType === 6) {
                 const { faceText, faceIndex, faceType } = v.faceElement as Dict
                 const name = faceText ? faceText.slice(1) : face.get(faceIndex).QDes.slice(1)
