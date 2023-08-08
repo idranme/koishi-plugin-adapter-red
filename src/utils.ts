@@ -128,8 +128,13 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
             }
             case 5: {
                 if (meta.subMsgType !== 8) return
-                session.type = 'guild-member-added'
-                session.operatorId = (meta.elements[0].grayTipElement.groupElement as any).adminUin
+                const groupElement = meta.elements[0].grayTipElement.groupElement as any
+                if (groupElement.type === 1) {
+                    session.type = 'guild-member-added'
+                    session.operatorId = groupElement.adminUin
+                } else {
+                    return
+                }
                 break
             }
         }
