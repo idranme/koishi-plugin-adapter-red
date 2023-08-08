@@ -114,6 +114,7 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         session.userId = meta.senderUin
         session.isDirect = meta.chatType === 1
         session.channelId = meta.peerUin
+        session.subtype = session.isDirect ? 'private' : 'group'
         if (!session.isDirect) {
             session.guildId = meta.peerUin
         }
