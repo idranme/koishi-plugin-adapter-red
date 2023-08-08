@@ -16,6 +16,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             },
             elements: this.elements
         })
+        this.elements = []
     }
 
     private text(content: string) {
@@ -109,6 +110,11 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             } else {
                 this.face(attrs)
             }
+        } else if (type === 'figure') {
+            await this.render(children)
+            await this.flush()
+        } else {
+            await this.render(children)
         }
     }
 }

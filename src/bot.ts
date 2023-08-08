@@ -1,4 +1,4 @@
-import { Bot, Context, Schema, Quester } from 'koishi'
+import { Bot, Context, Schema, Quester, Logger } from 'koishi'
 import { RedAdapter } from './adapter'
 import { Internal } from './types'
 import { RedMessageEncoder } from './message'
@@ -7,6 +7,7 @@ import { decodeGuildMember, decodeGuild, decodeUser } from './utils'
 export class RedBot extends Bot<RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
     http: Quester
+    logger: Logger
     declare internal: Internal
 
     constructor(ctx: Context, config: RedBot.Config) {
@@ -21,6 +22,7 @@ export class RedBot extends Bot<RedBot.Config> {
         })
         this.internal = new Internal(this.http)
         this.platform = 'red'
+        this.logger = ctx.logger('red')
         ctx.plugin(RedAdapter, this)
     }
 

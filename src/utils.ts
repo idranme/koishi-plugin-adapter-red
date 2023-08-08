@@ -1,5 +1,5 @@
 import { Friend, WsEvents, Message, Group } from './types'
-import { Universal, h, Session, Dict } from 'koishi'
+import { Universal, h, Session, Dict, Logger } from 'koishi'
 import { RedBot } from './bot'
 import * as face from 'qface'
 import FileType from 'file-type'
@@ -37,17 +37,6 @@ export const decodeGuild = (info: Group): Universal.Guild => ({
 })
 
 export async function decodeMessage(bot: RedBot, meta: Message, session: Partial<Session> = {}) {
-    session.messageId = meta.msgId
-    session.timestamp = new Date(meta.msgTime).valueOf() || Date.now()
-    session.author = decodeAuthor(meta)
-    session.userId = meta.senderUin
-    session.isDirect = meta.chatType === 1
-    session.channelId = meta.peerUin
-
-    if (!session.isDirect) {
-        session.guildId = meta.peerUin
-    }
-
     const elements = []
     if (meta.elements) {
         //console.log(meta.elements)
@@ -116,9 +105,33 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
     //console.log(input)
     const session = bot.session()
     if (input.type === 'message::recv') {
-        session.type = 'message'
-        await decodeMessage(bot, input.payload[0], session)
-        if (session.elements.length === 0) return
+        if (input.payload.length === 0) return
+        const meta = input.payload[0]
+
+        session.messageId = meta.msgId
+        session.timestamp = new Date(meta.msgTime).valueOf() || Date.now()
+        session.author = decodeAuthor(meta)
+        session.userId = meta.senderUin
+        session.isDirect = meta.chatType === 1
+        session.channelId = meta.peerUin
+        if (!session.isDirect) {
+            session.guildId = meta.peerUin
+        }
+
+        switch (meta.msgType) {
+            case 2: {
+                session.type = 'message'
+                await decodeMessage(bot, meta, session)
+                if (session.elements.length === 0) return
+                break
+            }
+            case 5: {
+                if (meta.subMsgType !== 8) return
+                session.type = 'guild-member-added'
+                session.operatorId = (meta.elements[0].grayTipElement.groupElement as any).adminUin
+                break
+            }
+        }
     } else {
         return
     }
