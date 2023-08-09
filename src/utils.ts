@@ -120,7 +120,8 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         }
 
         switch (meta.msgType) {
-            case 2: {
+            case 2:
+            case 8: {
                 session.type = 'message'
                 await decodeMessage(bot, meta, session)
                 if (session.elements.length === 0) return
@@ -132,6 +133,14 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                 if (groupElement.type === 1) {
                     session.type = 'guild-member-added'
                     session.operatorId = groupElement.adminUin
+                    const uin = groupElement.memberUin
+                    session.author = {
+                        userId: uin,
+                        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uin}&spec=640`,
+                        username: groupElement.memberNick,
+                        nickname: groupElement.memberNick,
+                    }
+                    session.userId = uin
                 } else {
                     return
                 }
