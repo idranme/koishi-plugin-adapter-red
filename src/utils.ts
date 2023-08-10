@@ -43,7 +43,7 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
         for await (const v of meta.elements) {
             if (v.elementType === 1) {
                 // text
-                const { atType, atNtUin, content } = v.textElement
+                const { atType, atUid, content } = v.textElement
                 if (atType === 1) {
                     elements.push(h('at', {
                         type: 'all'
@@ -51,7 +51,7 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                     continue
                 }
                 if (atType === 2) {
-                    elements.push(h.at(atNtUin, {
+                    elements.push(h.at(atUid, {
                         name: content.replace('@', '')
                     }))
                     continue
@@ -102,11 +102,12 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
 }
 
 export async function adaptSession(bot: RedBot, input: WsEvents) {
-    //console.log(input)
     const session = bot.session()
     if (input.type === 'message::recv') {
         if (input.payload.length === 0) return
         const meta = input.payload[0]
+        //console.log(meta)
+        //console.log(meta.elements)
 
         session.messageId = meta.msgId
         session.timestamp = new Date(meta.msgTime).valueOf() || Date.now()
@@ -128,19 +129,31 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                 break
             }
             case 5: {
-                if (meta.subMsgType !== 8) return
-                const groupElement = meta.elements[0].grayTipElement.groupElement as any
-                if (groupElement.type === 1) {
-                    session.type = 'guild-member-added'
-                    session.operatorId = groupElement.adminUin
-                    const uin = groupElement.memberUin
-                    session.author = {
-                        userId: uin,
-                        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uin}&spec=640`,
-                        username: groupElement.memberNick,
-                        nickname: groupElement.memberNick,
+                if (meta.subMsgType === 8) {
+                    const groupElement = meta.elements[0].grayTipElement.groupElement as any
+                    if (groupElement.type === 1) {
+                        session.type = 'guild-member-added'
+                        session.operatorId = groupElement.adminUin
+                        const uin = groupElement.memberUin
+                        session.author = {
+                            userId: uin,
+                            avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uin}&spec=640`,
+                            username: groupElement.memberNick,
+                            nickname: groupElement.memberNick,
+                        }
+                        session.userId = uin
+                    } else {
+                        return
                     }
-                    session.userId = uin
+                } else if (meta.subMsgType === 12) {
+                    const uins = meta.elements[0].grayTipElement.xmlElement.content.match(/(?<=jp=")[0-9]+(?=")/g)
+                    session.type = 'guild-member-added'
+                    session.operatorId = uins[0]
+                    session.author = {
+                        userId: uins[1],
+                        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uins[1]}&spec=640`
+                    }
+                    session.userId = uins[1]
                 } else {
                     return
                 }

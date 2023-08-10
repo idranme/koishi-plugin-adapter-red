@@ -113,6 +113,17 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         } else if (type === 'figure') {
             await this.render(children)
             await this.flush()
+        } else if (type === 'p') {
+            const prev = this.elements[this.elements.length - 1]
+            if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
+                if (!prev.textElement.content.endsWith('\n')) {
+                    prev.textElement.content += '\n'
+                }
+            } else {
+                this.text('\n')
+            }
+            await this.render(children)
+            this.text('\n')
         } else {
             await this.render(children)
         }

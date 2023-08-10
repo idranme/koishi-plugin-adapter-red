@@ -1,4 +1,4 @@
-import { Bot, Context, Schema, Quester, Logger } from 'koishi'
+import { Bot, Context, Schema, Quester, Logger, Universal } from 'koishi'
 import { RedAdapter } from './adapter'
 import { Internal } from './types'
 import { RedMessageEncoder } from './message'
@@ -82,6 +82,20 @@ export class RedBot extends Bot<RedBot.Config> {
         const data = await this.internal.getFriendList()
         return data.map(decodeUser)
     }
+
+    /**
+    async getMessageList(channelId: string, before?: string) {
+        const data = await this.internal.getHistory({
+            peer: {
+                guildId: null,
+                peerUin: channelId,
+                chatType: 2
+            },
+            count: 50
+        })
+        console.log(data)
+    }
+    */
 }
 
 export namespace RedBot {
