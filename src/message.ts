@@ -8,6 +8,20 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     elements: Element[] = []
 
     async flush(): Promise<void> {
+        const first = this.elements[0]
+        if (first?.elementType === 1 && first?.textElement.atType === 0) {
+            if (first.textElement.content === '\n') {
+                this.elements.splice(0, 1)
+            }
+        }
+        const latest = this.elements[this.elements.length - 1]
+        if (latest?.elementType === 1 && latest?.textElement.atType === 0) {
+            if (latest.textElement.content === '\n') {
+                this.elements.splice(this.elements.length - 1, 1)
+            } else if (latest.textElement.content.endsWith('\n')) {
+                latest.textElement.content = latest.textElement.content.slice(0, -2)
+            }
+        }
         this.bot.internal._wsRequest('message::send', {
             peer: {
                 chatType: this.session.isDirect ? 1 : 2,
@@ -91,6 +105,31 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             extras.faceType = attrs['red:type']
         }
         this.elements.push({ elementType: 6, faceElement: { faceIndex: attrs.id, ...extras } } as any)
+    }
+
+    private async audio(attrs: Dict) {
+        // 无法上传文件
+        const file = await this.uploadAsset(attrs)
+        console.log(file)
+        this.elements.push({
+            elementType: 4,
+            pttElement: {
+                md5HexStr: file.md5,
+                fileSize: file.fileSize,
+                fileName: file.md5 + '.' + file.ntFilePath.split('.').slice(-1),
+                filePath: file.ntFilePath
+            }
+        } as any)
+    }
+
+    private quote(attrs: Dict) {
+        // 发送时会带 at
+        this.elements.push({
+            elementType: 7,
+            replyElement: {
+                replayMsgId: attrs.id
+            }
+        } as any)
     }
 
     async visit(element: h) {

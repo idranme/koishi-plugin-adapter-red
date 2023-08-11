@@ -39,7 +39,6 @@ export const decodeGuild = (info: Group): Universal.Guild => ({
 export async function decodeMessage(bot: RedBot, meta: Message, session: Partial<Session> = {}) {
     const elements = []
     if (meta.elements) {
-        //console.log(meta.elements)
         for await (const v of meta.elements) {
             if (v.elementType === 1) {
                 // text
@@ -74,6 +73,22 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                 })
                 const { mime } = await FileType.fromBuffer(file.data)
                 elements.push(h.image(file.data, mime))
+            } else if (v.elementType === 4) {
+                // audio
+                const file = await bot.http.axios('/message/fetchRichMedia', {
+                    method: 'POST',
+                    data: {
+                        msgId: meta.msgId,
+                        chatType: meta.chatType,
+                        peerUid: meta.peerUin,
+                        elementId: v.elementId,
+                        thumbSize: 0,
+                        downloadType: 2
+                    },
+                    responseType: 'arraybuffer'
+                })
+                const mime = file.headers['content-type']
+                elements.push(h.audio(file.data, mime))
             } else if (v.elementType === 6) {
                 // face
                 const { faceText, faceIndex, faceType } = v.faceElement as Dict
@@ -83,6 +98,7 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                 ]))
             } else if (v.elementType === 7) {
                 // quote
+                //console.log(v.replyElement)
                 /*const { sourceMsgIdInRecords, senderUid } = v.replyElement as Dict
                 session.quote = {
                     userId: senderUid,
@@ -122,7 +138,9 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
 
         switch (meta.msgType) {
             case 2:
-            case 8: {
+            case 6:
+            case 8:
+            case 9: {
                 session.type = 'message'
                 await decodeMessage(bot, meta, session)
                 if (session.elements.length === 0) return
