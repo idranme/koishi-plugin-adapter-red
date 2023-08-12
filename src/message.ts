@@ -6,20 +6,23 @@ import * as face from 'qface'
 
 export class RedMessageEncoder extends MessageEncoder<RedBot> {
     elements: Element[] = []
+    trim = false
 
     async flush(): Promise<void> {
-        const first = this.elements[0]
-        if (first?.elementType === 1 && first?.textElement.atType === 0) {
-            if (first.textElement.content === '\n') {
-                this.elements.splice(0, 1)
+        if (this.trim) {
+            const first = this.elements[0]
+            if (first?.elementType === 1 && first?.textElement.atType === 0) {
+                if (first.textElement.content === '\n') {
+                    this.elements.splice(0, 1)
+                }
             }
-        }
-        const latest = this.elements[this.elements.length - 1]
-        if (latest?.elementType === 1 && latest?.textElement.atType === 0) {
-            if (latest.textElement.content === '\n') {
-                this.elements.splice(this.elements.length - 1, 1)
-            } else if (latest.textElement.content.endsWith('\n')) {
-                latest.textElement.content = latest.textElement.content.slice(0, -2)
+            const latest = this.elements[this.elements.length - 1]
+            if (latest?.elementType === 1 && latest?.textElement.atType === 0) {
+                if (latest.textElement.content === '\n') {
+                    this.elements.splice(this.elements.length - 1, 1)
+                } else if (latest.textElement.content.endsWith('\n')) {
+                    latest.textElement.content = latest.textElement.content.slice(0, -2)
+                }
             }
         }
         this.bot.internal._wsRequest('message::send', {
@@ -153,6 +156,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             await this.render(children)
             await this.flush()
         } else if (type === 'p') {
+            this.trim = true
             const prev = this.elements[this.elements.length - 1]
             if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
                 if (!prev.textElement.content.endsWith('\n')) {

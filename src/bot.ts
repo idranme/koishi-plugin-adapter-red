@@ -83,7 +83,7 @@ export class RedBot extends Bot<RedBot.Config> {
         return data.map(decodeUser)
     }
 
-    /**
+    /*
     async getMessageList(channelId: string, before?: string) {
         const data = await this.internal.getHistory({
             peer: {
@@ -96,6 +96,11 @@ export class RedBot extends Bot<RedBot.Config> {
         console.log(data)
     }
     */
+
+    async getSelf() {
+        const data = await this.internal.getSelfProfile()
+        return decodeUser(data)
+    }
 }
 
 export namespace RedBot {

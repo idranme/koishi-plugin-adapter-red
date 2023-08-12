@@ -24,11 +24,18 @@ export const decodeAuthor = (meta: Message): Universal.Author => ({
     nickname: meta.sendMemberName || meta.sendNickName,
 })
 
+const roleMap = {
+    2: 'member',
+    3: 'admin',
+    4: 'owner'
+}
+
 export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
     userId: detail.uin,
     username: detail.nick,
     avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${detail.uin}&spec=640`,
-    nickname: detail.nick
+    nickname: detail.nick,
+    roles: [roleMap[detail.role]]
 })
 
 export const decodeGuild = (info: Group): Universal.Guild => ({
@@ -42,7 +49,7 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
         for await (const v of meta.elements) {
             if (v.elementType === 1) {
                 // text
-                const { atType, atUid, content } = v.textElement
+                const { atType, atUid, content, atNtUin } = v.textElement
                 if (atType === 1) {
                     elements.push(h('at', {
                         type: 'all'
@@ -50,7 +57,7 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                     continue
                 }
                 if (atType === 2) {
-                    elements.push(h.at(atUid, {
+                    elements.push(h.at(atNtUin || atUid, {
                         name: content.replace('@', '')
                     }))
                     continue
