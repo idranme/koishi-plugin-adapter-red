@@ -39,7 +39,6 @@ export class RedAdapter extends Adapter.WsClient<RedBot> {
 
 export namespace RedAdapter {
     export interface Config extends Adapter.WsClient.Config {
-        intents?: number
     }
 
     export const Config: Schema<Config> = Schema.intersect([

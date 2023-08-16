@@ -3,6 +3,7 @@ import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
+import { uploadAudio } from './assets'
 
 export class RedMessageEncoder extends MessageEncoder<RedBot> {
     elements: Element[] = []
@@ -111,16 +112,17 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     }
 
     private async audio(attrs: Dict) {
-        // 无法上传文件
-        const file = await this.uploadAsset(attrs)
-        console.log(file)
+        const { data, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const file = await uploadAudio(Buffer.from(data), mime)
         this.elements.push({
             elementType: 4,
             pttElement: {
                 md5HexStr: file.md5,
                 fileSize: file.fileSize,
-                fileName: file.md5 + '.' + file.ntFilePath.split('.').slice(-1),
-                filePath: file.ntFilePath
+                fileName: file.md5 + '.amr',
+                filePath: file.filePath,
+                waveAmplitudes: [8, 0, 40, 0, 56, 0],
+                duration: file.duration
             }
         } as any)
     }
@@ -167,6 +169,9 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             }
             await this.render(children)
             this.text('\n')
+        } else if (type === 'audio') {
+            await this.audio(attrs)
+            await this.flush()
         } else {
             await this.render(children)
         }

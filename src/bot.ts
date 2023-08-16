@@ -44,6 +44,7 @@ export class RedBot extends Bot<RedBot.Config> {
             group: guildId,
             size: 3000
         })
+        //console.log(data)
         return data.map(decodeGuildMember)
     }
 
