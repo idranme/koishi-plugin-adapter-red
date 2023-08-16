@@ -81,6 +81,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
 
     private async image(attrs: Dict) {
         const file = await this.uploadAsset(attrs)
+        const picType = file.imageInfo.type === 'gif' ? 2000 : 1000
         this.elements.push({
             elementType: 2,
             picElement: {
@@ -89,7 +90,8 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 fileName: file.md5 + '.' + file.ntFilePath.split('.').slice(-1),
                 sourcePath: file.ntFilePath,
                 picHeight: file.imageInfo.height,
-                picWidth: file.imageInfo.width
+                picWidth: file.imageInfo.width,
+                picType
             }
         } as any)
     }
@@ -112,6 +114,8 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     }
 
     private async audio(attrs: Dict) {
+        //const file = await this.uploadAsset(attrs)
+        //console.log(file)
         const { data, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
         const file = await uploadAudio(Buffer.from(data), mime)
         this.elements.push({

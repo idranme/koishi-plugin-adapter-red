@@ -9,6 +9,8 @@ const TMP_DIR = tmpdir()
 const NOOP = () => { }
 
 export async function uploadAudio(buffer: Buffer, mime: string) {
+    const head = buffer.subarray(0, 7).toString()
+    
     if (mime !== 'audio/amr') {
         const uuid = randomUUID({ disableEntropyCache: true })
         const savePath = resolve(TMP_DIR, uuid)
@@ -24,7 +26,7 @@ export async function uploadAudio(buffer: Buffer, mime: string) {
     const savePath = resolve(TMP_DIR, md5)
     await writeFile(savePath, buffer)
 
-    const duration = await getDuration(savePath)
+    const duration = head.includes('SILK') ? 0 : await getDuration(savePath)
 
     return {
         md5,
@@ -57,15 +59,15 @@ function getDuration(file: string, ffmpeg = "ffmpeg"): Promise<number> {
             const outStr = stderr.toString()
             const regDuration = /Duration\: ([0-9\:\.]+),/
             const rs = regDuration.exec(outStr)
-            if (rs[1]) {
+            if (rs === null) {
+                reject("获取音频时长失败, 请确认你的 ffmpeg 可用")
+            } else if (rs[1]) {
                 //获得时长
                 const time = rs[1]
                 const parts = time.split(":")
                 const seconds = (+parts[0]) * 3600 + (+parts[1]) * 60 + (+parts[2])
                 const round = seconds.toString().split('.')[0]
                 resolve(+ round)
-            } else {
-                reject("获取音频时长失败, 请确认你的 ffmpeg 可用")
             }
         })
     })
