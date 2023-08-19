@@ -66,34 +66,12 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
             } else if (v.elementType === 2) {
                 // image
                 // picsubtype 为0是图片 为1是动画表情
-                const file = await bot.http.axios('/message/fetchRichMedia', {
-                    method: 'POST',
-                    data: {
-                        msgId: meta.msgId,
-                        chatType: meta.chatType,
-                        peerUid: meta.peerUin,
-                        elementId: v.elementId,
-                        thumbSize: 0,
-                        downloadType: 2
-                    },
-                    responseType: 'arraybuffer'
-                })
+                const file = await getFile(bot, meta, v.elementId)
                 const { mime } = await FileType.fromBuffer(file.data)
                 elements.push(h.image(file.data, mime))
             } else if (v.elementType === 4) {
                 // audio
-                const file = await bot.http.axios('/message/fetchRichMedia', {
-                    method: 'POST',
-                    data: {
-                        msgId: meta.msgId,
-                        chatType: meta.chatType,
-                        peerUid: meta.peerUin,
-                        elementId: v.elementId,
-                        thumbSize: 0,
-                        downloadType: 2
-                    },
-                    responseType: 'arraybuffer'
-                })
+                const file = await getFile(bot, meta, v.elementId)
                 const mime = file.headers['content-type']
                 elements.push(h.audio(file.data, mime))
             } else if (v.elementType === 6) {
@@ -124,9 +102,24 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
     return session as Universal.Message
 }
 
+async function getFile(bot: RedBot, meta: Message, elementId: string) {
+    return bot.http.axios('/message/fetchRichMedia', {
+        method: 'POST',
+        data: {
+            msgId: meta.msgId,
+            chatType: meta.chatType,
+            peerUid: meta.peerUin,
+            elementId,
+            thumbSize: 0,
+            downloadType: 2
+        },
+        responseType: 'arraybuffer'
+    })
+}
+
 export async function adaptSession(bot: RedBot, input: WsEvents) {
     const session = bot.session()
-    if (input.type === 'message::recv') {
+    if (input?.type === 'message::recv') {
         if (input.payload.length === 0) return
         const meta = input.payload[0]
         //console.log(meta)
@@ -151,6 +144,16 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                 session.type = 'message'
                 await decodeMessage(bot, meta, session)
                 if (session.elements.length === 0) return
+                break
+            }
+            case 3: {
+                session.type = 'guild-file-added'
+                /*const element = meta.elements[0]
+                const file = await getFile(bot, meta, element.elementId)
+                const { mime } = await FileType.fromBuffer(file.data)
+                session.elements = [h.file(file.data, mime)]
+                session.content = session.elements.join('')
+                console.log(mime)*/
                 break
             }
             case 5: {
@@ -185,6 +188,8 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                 }
                 break
             }
+            default:
+                return
         }
     } else {
         return

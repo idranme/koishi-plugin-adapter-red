@@ -114,16 +114,14 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     }
 
     private async audio(attrs: Dict) {
-        //const file = await this.uploadAsset(attrs)
-        //console.log(file)
-        const { data, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
-        const file = await uploadAudio(Buffer.from(data), mime)
+        const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const file = await uploadAudio(Buffer.from(data))
         this.elements.push({
             elementType: 4,
             pttElement: {
                 md5HexStr: file.md5,
                 fileSize: file.fileSize,
-                fileName: file.md5 + '.amr',
+                fileName: file.md5 + '.silk',
                 filePath: file.filePath,
                 waveAmplitudes: [8, 0, 40, 0, 56, 0],
                 duration: file.duration

@@ -1,61 +1,79 @@
-import { writeFile, readFile } from 'fs/promises'
+import { writeFile, readFile, stat } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import { resolve, join } from 'path'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
-import { unlink } from 'fs'
+import { unlink, access, constants } from 'fs'
+import { encode } from 'node-silk-encode'
 
 const TMP_DIR = tmpdir()
 const NOOP = () => { }
 
-export async function uploadAudio(buffer: Buffer, mime: string) {
+export async function uploadAudio(buffer: Buffer) {
     const head = buffer.subarray(0, 7).toString()
-    
-    if (mime !== 'audio/amr') {
-        const uuid = randomUUID({ disableEntropyCache: true })
-        const savePath = resolve(TMP_DIR, uuid)
-        await writeFile(savePath, buffer)
-        buffer = await audioTrans(savePath)
-        unlink(savePath, NOOP)
+
+    let filePath: string
+    let duration = 0
+    let fileSize = buffer.length
+    if (!head.includes('SILK')) {
+        const tmpPath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+        await writeFile(tmpPath, buffer)
+        duration = await getDuration(tmpPath)
+        const res = await audioTrans(tmpPath)
+        filePath = res.silkFile
+        const fileInfo = await stat(filePath)
+        fileSize = fileInfo.size
+    } else {
+        filePath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+        await writeFile(filePath, buffer)
     }
 
     const hash = createHash('md5')
     hash.update(buffer.toString('binary'), 'binary')
     const md5 = hash.digest('hex')
 
-    const savePath = resolve(TMP_DIR, md5)
-    await writeFile(savePath, buffer)
-
-    const duration = head.includes('SILK') ? 0 : await getDuration(savePath)
-
     return {
         md5,
-        fileSize: buffer.length,
-        filePath: savePath,
+        fileSize,
+        filePath,
         duration
     }
 }
 
-function audioTrans(file: string, ffmpeg = "ffmpeg"): Promise<Buffer> {
+interface transRet {
+    silkFile: string
+}
+
+function audioTrans(tmpPath: string): Promise<transRet> {
     return new Promise((resolve, reject) => {
-        const uuid = randomUUID({ disableEntropyCache: true })
-        const tmpfile = join(TMP_DIR, uuid)
-        exec(`${ffmpeg} -y -i "${file}" -ac 1 -ar 8000 -f amr "${tmpfile}"`, async (error, stdout, stderr) => {
-            try {
-                const amr = await readFile(tmpfile)
-                resolve(amr)
-            } catch {
-                reject("音频转码到 amr 失败, 请确认你的 ffmpeg 可以处理此转换")
-            } finally {
-                unlink(tmpfile, NOOP)
-            }
+        const pcmFile: string = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+        exec(`ffmpeg -y -i "${tmpPath}" -ar 44100 -ac 1 -f s16le "${pcmFile}"`, async () => {
+            unlink(tmpPath, NOOP)
+            access(pcmFile, constants.F_OK, (err) => {
+                if (err) {
+                    reject('音频转码失败, 请确认你的 ffmpeg 可用')
+                }
+            })
+
+            const silkFile = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+            await encode(pcmFile, silkFile)
+            unlink(pcmFile, NOOP)
+            access(silkFile, constants.F_OK, (err) => {
+                if (err) {
+                    reject('音频转码失败')
+                }
+            })
+
+            resolve({
+                silkFile
+            })
         })
     })
 }
 
-function getDuration(file: string, ffmpeg = "ffmpeg"): Promise<number> {
+function getDuration(file: string): Promise<number> {
     return new Promise((resolve, reject) => {
-        exec(`${ffmpeg} -i ${file}`, function (err, stdout, stderr) {
+        exec(`ffmpeg -i ${file}`, function (err, stdout, stderr) {
             const outStr = stderr.toString()
             const regDuration = /Duration\: ([0-9\:\.]+),/
             const rs = regDuration.exec(outStr)
