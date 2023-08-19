@@ -15,15 +15,13 @@ export async function uploadAudio(buffer: Buffer) {
     let filePath: string
     let duration = 0
     if (!head.includes('SILK')) {
-        const tmpPath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
-        await writeFile(tmpPath, buffer)
+        const tmpPath = await saveTmp(buffer)
         duration = await getDuration(tmpPath)
         const res = await audioTrans(tmpPath)
         filePath = res.silkFile
         buffer = await readFile(filePath)
     } else {
-        filePath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
-        await writeFile(filePath, buffer)
+        filePath = await saveTmp(buffer)
     }
 
     const hash = createHash('md5')
@@ -49,7 +47,7 @@ function audioTrans(tmpPath: string): Promise<transRet> {
             unlink(tmpPath, NOOP)
             access(pcmFile, constants.F_OK, (err) => {
                 if (err) {
-                    reject('音频转码失败, 请确认你的 ffmpeg 可用')
+                    reject('音频转码失败, 请确保你的 ffmpeg 可用')
                 }
             })
 
@@ -76,7 +74,7 @@ function getDuration(file: string): Promise<number> {
             const regDuration = /Duration\: ([0-9\:\.]+),/
             const rs = regDuration.exec(outStr)
             if (rs === null) {
-                reject("获取音频时长失败, 请确认你的 ffmpeg 可用")
+                reject("获取音频时长失败, 请确保你的 ffmpeg 可用")
             } else if (rs[1]) {
                 //获得时长
                 const time = rs[1]
@@ -84,6 +82,29 @@ function getDuration(file: string): Promise<number> {
                 const seconds = (+parts[0]) * 3600 + (+parts[1]) * 60 + (+parts[2])
                 const round = seconds.toString().split('.')[0]
                 resolve(+ round)
+            }
+        })
+    })
+}
+
+export async function saveTmp(data: Buffer): Promise<string> {
+    const tmpPath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+    await writeFile(tmpPath, data)
+    return tmpPath
+}
+
+export function imageTrans(file: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        const uuid = randomUUID({ disableEntropyCache: true })
+        const tmpfile = join(TMP_DIR, uuid + '.png')
+        exec(`ffmpeg -i "${file}" "${tmpfile}"`, async (error, stdout, stderr) => {
+            try {
+                const amr = await readFile(tmpfile)
+                resolve(amr)
+            } catch {
+                reject("图片转码到 png 失败, 请确保你的 ffmpeg 可用")
+            } finally {
+                unlink(tmpfile, NOOP)
             }
         })
     })
