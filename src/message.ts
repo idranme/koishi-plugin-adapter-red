@@ -119,9 +119,8 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         this.elements.push({
             elementType: 4,
             pttElement: {
-                md5HexStr: file.md5,
                 fileSize: file.fileSize,
-                fileName: file.md5 + '.silk',
+                fileName: file.filePath.split('\\').at(-1) + '.silk',
                 filePath: file.filePath,
                 waveAmplitudes: [8, 0, 40, 0, 56, 0],
                 duration: file.duration

@@ -28,12 +28,7 @@ export async function uploadAudio(buffer: Buffer) {
         await writeFile(filePath, buffer)
     }
 
-    const hash = createHash('md5')
-    hash.update(buffer.toString('binary'), 'binary')
-    const md5 = hash.digest('hex')
-
     return {
-        md5,
         fileSize,
         filePath,
         duration
