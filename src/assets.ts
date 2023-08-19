@@ -1,4 +1,4 @@
-import { writeFile, readFile, stat } from 'fs/promises'
+import { writeFile, readFile } from 'fs/promises'
 import { createHash, randomUUID } from 'crypto'
 import { resolve, join } from 'path'
 import { exec } from 'child_process'
@@ -14,22 +14,25 @@ export async function uploadAudio(buffer: Buffer) {
 
     let filePath: string
     let duration = 0
-    let fileSize = buffer.length
     if (!head.includes('SILK')) {
         const tmpPath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
         await writeFile(tmpPath, buffer)
         duration = await getDuration(tmpPath)
         const res = await audioTrans(tmpPath)
         filePath = res.silkFile
-        const fileInfo = await stat(filePath)
-        fileSize = fileInfo.size
+        buffer = await readFile(filePath)
     } else {
         filePath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
         await writeFile(filePath, buffer)
     }
 
+    const hash = createHash('md5')
+    hash.update(buffer.toString('binary'), 'binary')
+    const md5 = hash.digest('hex')
+
     return {
-        fileSize,
+        md5,
+        fileSize: buffer.length,
         filePath,
         duration
     }
