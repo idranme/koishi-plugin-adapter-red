@@ -35,6 +35,13 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             },
             elements: this.elements
         })
+        const session = this.bot.session()
+        session.messageId = ''
+        session.timestamp = +new Date()
+        session.userId = this.bot.selfId
+        this.results.push(session)
+        session.app.emit(session, 'send', session)
+
         this.elements = []
     }
 
@@ -122,6 +129,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     private async audio(attrs: Dict) {
         const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
         const file = await uploadAudio(Buffer.from(data))
+        //console.log(file.filePath)
         this.elements.push({
             elementType: 4,
             pttElement: {
