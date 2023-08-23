@@ -5,7 +5,6 @@ import { exec } from 'child_process'
 import { tmpdir } from 'os'
 import { unlink, access, constants } from 'fs'
 import { encode } from 'node-silk-encode'
-import { conver } from 'image2png'
 
 const TMP_DIR = tmpdir()
 const NOOP = () => { }
@@ -48,7 +47,7 @@ function audioTrans(tmpPath: string): Promise<transRet> {
             unlink(tmpPath, NOOP)
             access(pcmFile, constants.F_OK, (err) => {
                 if (err) {
-                    reject('音频转码失败, 请确保你的 ffmpeg 可用')
+                    reject('音频转码失败, 请确保你的 ffmpeg 已正确安装')
                 }
             })
 
@@ -75,7 +74,7 @@ function getDuration(file: string): Promise<number> {
             const regDuration = /Duration\: ([0-9\:\.]+),/
             const rs = regDuration.exec(outStr)
             if (rs === null) {
-                reject("获取音频时长失败, 请确保你的 ffmpeg 可用")
+                reject("获取音频时长失败, 请确保你的 ffmpeg 已正确安装")
             } else if (rs[1]) {
                 //获得时长
                 const time = rs[1]
@@ -103,7 +102,7 @@ export function imageTrans(file: string): Promise<Buffer> {
                 const png = await readFile(tmpfile)
                 resolve(png)
             } catch {
-                reject("图片转码到 png 失败, 请确保你的 ffmpeg 可用")
+                reject("图片转码到 png 失败, 请确保你的 ffmpeg 已正确安装")
             } finally {
                 unlink(tmpfile, NOOP)
             }
@@ -111,11 +110,11 @@ export function imageTrans(file: string): Promise<Buffer> {
     })
 }
 
-export async function image2png(file: string): Promise<Buffer> {
+/*export async function image2png(file: string): Promise<Buffer> {
     const uuid = randomUUID({ disableEntropyCache: true })
     const tmpfile = join(TMP_DIR, uuid + '.png')
     await conver(file, tmpfile)
     const png = await readFile(tmpfile)
     unlink(tmpfile, NOOP)
     return png
-}
+}*/
