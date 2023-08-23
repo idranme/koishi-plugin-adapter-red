@@ -5,6 +5,7 @@ import { exec } from 'child_process'
 import { tmpdir } from 'os'
 import { unlink, access, constants } from 'fs'
 import { encode } from 'node-silk-encode'
+import { conver } from 'image2png'
 
 const TMP_DIR = tmpdir()
 const NOOP = () => { }
@@ -43,7 +44,7 @@ interface transRet {
 function audioTrans(tmpPath: string): Promise<transRet> {
     return new Promise((resolve, reject) => {
         const pcmFile: string = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
-        exec(`ffmpeg -y -i "${tmpPath}" -ar 44100 -ac 1 -f s16le "${pcmFile}"`, async () => {
+        exec(`ffmpeg -y -i "${tmpPath}" -ar 24000 -ac 1 -f s16le "${pcmFile}"`, async () => {
             unlink(tmpPath, NOOP)
             access(pcmFile, constants.F_OK, (err) => {
                 if (err) {
@@ -52,7 +53,7 @@ function audioTrans(tmpPath: string): Promise<transRet> {
             })
 
             const silkFile = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
-            await encode(pcmFile, silkFile)
+            await encode(pcmFile, silkFile, '24000')
             unlink(pcmFile, NOOP)
             access(silkFile, constants.F_OK, (err) => {
                 if (err) {
@@ -99,8 +100,8 @@ export function imageTrans(file: string): Promise<Buffer> {
         const tmpfile = join(TMP_DIR, uuid + '.png')
         exec(`ffmpeg -i "${file}" "${tmpfile}"`, async (error, stdout, stderr) => {
             try {
-                const amr = await readFile(tmpfile)
-                resolve(amr)
+                const png = await readFile(tmpfile)
+                resolve(png)
             } catch {
                 reject("图片转码到 png 失败, 请确保你的 ffmpeg 可用")
             } finally {
@@ -108,4 +109,13 @@ export function imageTrans(file: string): Promise<Buffer> {
             }
         })
     })
+}
+
+export async function image2png(file: string): Promise<Buffer> {
+    const uuid = randomUUID({ disableEntropyCache: true })
+    const tmpfile = join(TMP_DIR, uuid + '.png')
+    await conver(file, tmpfile)
+    const png = await readFile(tmpfile)
+    unlink(tmpfile, NOOP)
+    return png
 }
