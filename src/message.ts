@@ -3,7 +3,7 @@ import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
-import { uploadAudio, saveTmp, imageTrans } from './assets'
+import { uploadAudio, saveTmp, image2png } from './assets'
 import { unlink } from 'fs'
 
 export class RedMessageEncoder extends MessageEncoder<RedBot> {
@@ -82,8 +82,8 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         const head = buffer.subarray(0, 14).toString()
         if (head.includes('WEBP') || head.includes('JFIF')) {
             this.bot.logger.info('检测消息含有可能无法发送的图片，即将尝试转换格式以修复该问题')
-            const tmpPath = await saveTmp(buffer)
-            buffer = await imageTrans(tmpPath)
+            const tmpPath = await saveTmp(buffer, head.includes('JFIF') ? 'jpeg' : 'webp')
+            buffer = await image2png(tmpPath)
             unlink(tmpPath, noop)
             this.bot.logger.info('图片已转码为 png')
         }

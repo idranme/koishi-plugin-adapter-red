@@ -5,6 +5,7 @@ import { exec } from 'child_process'
 import { tmpdir } from 'os'
 import { unlink, access, constants } from 'fs'
 import { encode } from 'node-silk-encode'
+import { conver } from 'image2png'
 
 const TMP_DIR = tmpdir()
 const NOOP = () => { }
@@ -87,8 +88,10 @@ function getDuration(file: string): Promise<number> {
     })
 }
 
-export async function saveTmp(data: Buffer): Promise<string> {
-    const tmpPath = resolve(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+export async function saveTmp(data: Buffer, ext?: string): Promise<string> {
+    ext = ext ? '.' + ext : ''
+    const filename = randomUUID({ disableEntropyCache: true }) + ext
+    const tmpPath = resolve(TMP_DIR, filename)
     await writeFile(tmpPath, data)
     return tmpPath
 }
@@ -110,11 +113,11 @@ export function imageTrans(file: string): Promise<Buffer> {
     })
 }
 
-/*export async function image2png(file: string): Promise<Buffer> {
+export async function image2png(file: string): Promise<Buffer> {
     const uuid = randomUUID({ disableEntropyCache: true })
     const tmpfile = join(TMP_DIR, uuid + '.png')
     await conver(file, tmpfile)
     const png = await readFile(tmpfile)
     unlink(tmpfile, NOOP)
     return png
-}*/
+}
