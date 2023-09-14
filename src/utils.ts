@@ -39,6 +39,8 @@ export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
 })
 
 export const decodeGuild = (info: Group): Universal.Guild => ({
+    id: info.groupCode,
+    name: info.groupName,
     guildId: info.groupCode,
     guildName: info.groupName
 })

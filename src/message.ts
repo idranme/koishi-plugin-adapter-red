@@ -11,6 +11,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     trim = false
 
     async flush(): Promise<void> {
+        //console.log(this.elements)
         if (this.trim) {
             const first = this.elements[0]
             if (first?.elementType === 1 && first?.textElement.atType === 0) {
@@ -137,7 +138,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 fileSize: file.fileSize,
                 fileName: file.md5 + '.amr',
                 filePath: file.filePath,
-                waveAmplitudes: [8, 0, 40, 0, 56, 0],
+                waveAmplitudes: [36, 28, 68, 28, 84, 28],
                 duration: file.duration
             }
         } as any)

@@ -26,9 +26,9 @@ export class RedBot extends Bot<RedBot.Config> {
         ctx.plugin(RedAdapter, this)
     }
 
-    async getGuildList() {
-        const data = await this.internal.getGroupList()
-        return data.map(decodeGuild)
+    async getGuildList(_next?: string) {
+        const res = await this.internal.getGroupList()
+        return { data: res.map(decodeGuild) }
     }
 
     async kickGuildMember(guildId: string, userId: string, permanent?: boolean) {
@@ -39,13 +39,12 @@ export class RedBot extends Bot<RedBot.Config> {
         })
     }
 
-    async getGuildMemberList(guildId: string) {
-        const data = await this.internal.getMemberList({
+    async getGuildMemberList(guildId: string, _next?: string) {
+        const res = await this.internal.getMemberList({
             group: guildId,
             size: 3000
         })
-        //console.log(data)
-        return data.map(decodeGuildMember)
+        return {data: res.map(decodeGuildMember)}
     }
 
     async deleteMessage(channelId: string, messageId: string) {
@@ -79,9 +78,9 @@ export class RedBot extends Bot<RedBot.Config> {
         })
     }
 
-    async getFriendList() {
-        const data = await this.internal.getFriendList()
-        return data.map(decodeUser)
+    async getFriendList(_next?: string) {
+        const res = await this.internal.getFriendList()
+        return {data: res.map(decodeUser)}
     }
 
     /*

@@ -41,10 +41,10 @@ interface transRet {
     silkFile: string
 }
 
-function audioTrans(tmpPath: string): Promise<transRet> {
+function audioTrans(tmpPath: string, samplingRate = '24000'): Promise<transRet> {
     return new Promise((resolve, reject) => {
         const pcmFile: string = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
-        exec(`ffmpeg -y -i "${tmpPath}" -ar 24000 -ac 1 -f s16le "${pcmFile}"`, async () => {
+        exec(`ffmpeg -y -i "${tmpPath}" -ar ${samplingRate} -ac 1 -f s16le "${pcmFile}"`, async () => {
             unlink(tmpPath, NOOP)
             access(pcmFile, constants.F_OK, (err) => {
                 if (err) {
@@ -53,13 +53,8 @@ function audioTrans(tmpPath: string): Promise<transRet> {
             })
 
             const silkFile = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
-            await encode(pcmFile, silkFile, '24000')
+            await encode(pcmFile, silkFile, samplingRate)
             unlink(pcmFile, NOOP)
-            access(silkFile, constants.F_OK, (err) => {
-                if (err) {
-                    reject('音频转码失败')
-                }
-            })
 
             resolve({
                 silkFile
