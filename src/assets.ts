@@ -4,7 +4,7 @@ import { resolve, join } from 'path'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
 import { unlink, access, constants } from 'fs'
-import { encode } from '@silk_node/core'
+import { encode } from 'node-silk-encode'
 import { conver } from 'image2png'
 
 const TMP_DIR = tmpdir()
@@ -41,7 +41,7 @@ interface transRet {
     silkFile: string
 }
 
-function audioTrans(tmpPath: string, samplingRate = 24000): Promise<transRet> {
+function audioTrans(tmpPath: string, samplingRate = '24000'): Promise<transRet> {
     return new Promise((resolve, reject) => {
         const pcmFile: string = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
         exec(`ffmpeg -y -i "${tmpPath}" -ar ${samplingRate} -ac 1 -f s16le "${pcmFile}"`, async () => {
