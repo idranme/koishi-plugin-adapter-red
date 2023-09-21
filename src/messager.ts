@@ -3,8 +3,10 @@ import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
-import { uploadAudio, saveTmp, image2png } from './assets'
+import { uploadAudio, saveTmp, image2png, audioTrans, getDuration, NOOP } from './assets'
 import { unlink } from 'fs'
+import { basename } from 'path'
+import { readFile } from 'fs/promises'
 
 export class RedMessageEncoder extends MessageEncoder<RedBot> {
     elements: Element[] = []
@@ -77,36 +79,98 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         }
     }
 
-    private async uploadAsset(attrs: Dict) {
-        const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
+    private async uploadImage(attrs: Dict) {
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
         let buffer = Buffer.from(data)
+        let opt = {
+            filename,
+            contentType: mime ?? 'image/png'
+        }
         const head = buffer.subarray(0, 14).toString()
         if (head.includes('WEBP') || head.includes('JFIF')) {
             this.bot.logger.info('检测消息含有可能无法发送的图片，即将尝试转换格式以修复该问题')
             const tmpPath = await saveTmp(buffer, head.includes('JFIF') ? 'jpeg' : 'webp')
-            buffer = await image2png(tmpPath)
+            const { data, filename } = await image2png(tmpPath)
             unlink(tmpPath, noop)
             this.bot.logger.info('图片已转码为 png')
+            buffer = data
+            opt.filename = filename
+            opt.contentType = 'image/png'
         }
         const payload = new FormData()
-        payload.append('file', buffer)
+        payload.append('file', buffer, opt)
         return this.bot.internal.uploadFile(payload)
     }
 
+    private async uploadAudio(attrs: Dict) {
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+
+        let buffer = Buffer.from(data)
+        let opt = {
+            filename,
+            contentType: mime ?? 'audio/amr'
+        }
+
+        const head = buffer.subarray(0, 7).toString()
+        let duration = 0
+        if (!head.includes('SILK')) {
+            const tmpPath = await saveTmp(buffer)
+            duration = await getDuration(tmpPath)
+            const res = await audioTrans(tmpPath)
+            buffer = await readFile(res.silkFile)
+            unlink(res.silkFile, NOOP)
+            opt.filename = basename(res.silkFile)
+            opt.contentType = 'audio/amr'
+        }
+
+        const payload = new FormData()
+        payload.append('file', buffer, opt)
+        return { file: await this.bot.internal.uploadFile(payload), duration }
+    }
+
     private async image(attrs: Dict) {
-        const file = await this.uploadAsset(attrs)
-        const picType = file.imageInfo.type === 'gif' ? 2000 : 1000
+        const file = await this.uploadImage(attrs)
+
+        let picType = 1000
+        switch (file.imageInfo.type) {
+            case 'gif':
+                picType = 2000
+                break
+            case 'png':
+                picType = 1001
+                break
+        }
         this.elements.push({
             elementType: 2,
             picElement: {
                 md5HexStr: file.md5,
                 fileSize: file.fileSize,
-                fileName: file.md5 + '.' + file.ntFilePath.split('.').slice(-1),
+                fileName: basename(file.ntFilePath),
                 sourcePath: file.ntFilePath,
                 picHeight: file.imageInfo.height,
                 picWidth: file.imageInfo.width,
                 picType
             }
+        } as any)
+    }
+
+    private async file(attrs: Dict) {
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const form = new FormData()
+        form.append('file', data, {
+            filename,
+            contentType: mime ?? 'application/octet-stream'
+        })
+        const res = await this.bot.internal.uploadFile(form)
+        this.elements.push({
+            elementType: 3,
+            fileElement: {
+                fileName: basename(res.filePath),
+                filePath: res.filePath,
+                fileSize: String(res.fileSize),
+                picThumbPath: {},
+                thumbFileSize: 750,
+            },
         } as any)
     }
 
@@ -130,7 +194,6 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     private async audio(attrs: Dict) {
         const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
         const file = await uploadAudio(Buffer.from(data))
-        //console.log(file.filePath)
         this.elements.push({
             elementType: 4,
             pttElement: {
@@ -138,59 +201,83 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 fileSize: file.fileSize,
                 fileName: file.md5 + '.amr',
                 filePath: file.filePath,
-                waveAmplitudes: [36, 28, 68, 28, 84, 28],
+                waveAmplitudes: [
+                    99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+                ],
                 duration: file.duration
             }
         } as any)
     }
 
     private quote(attrs: Dict) {
-        // 发送时会带 at
         this.elements.push({
             elementType: 7,
             replyElement: {
-                replayMsgId: attrs.id
+                replayMsgId: attrs.id,
             }
         } as any)
     }
 
     async visit(element: h) {
         const { type, attrs, children } = element
-        if (type === 'text') {
-            this.text(attrs.content)
-        } else if (type === 'message') {
-            await this.flush()
-            await this.render(children)
-        } else if (type === 'at') {
-            this.at(attrs)
-        } else if (type === 'image') {
-            await this.image(attrs)
-        } else if (type === 'face') {
-            if (attrs.platform && attrs.platform !== this.bot.platform) {
+        switch (type) {
+            case 'text': {
+                this.text(attrs.content)
+                break
+            }
+            case 'message': {
+                await this.flush()
                 await this.render(children)
-            } else {
-                this.face(attrs)
+                break
             }
-        } else if (type === 'figure') {
-            await this.render(children)
-            await this.flush()
-        } else if (type === 'p') {
-            this.trim = true
-            const prev = this.elements[this.elements.length - 1]
-            if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
-                if (!prev.textElement.content.endsWith('\n')) {
-                    prev.textElement.content += '\n'
+            case 'at': {
+                this.at(attrs)
+                break
+            }
+            case 'image': {
+                await this.image(attrs)
+                break
+            }
+            case 'face': {
+                if (attrs.platform && attrs.platform !== this.bot.platform) {
+                    await this.render(children)
+                } else {
+                    this.face(attrs)
                 }
-            } else {
-                this.text('\n')
+                break
             }
-            await this.render(children)
-            this.text('\n')
-        } else if (type === 'audio') {
-            await this.audio(attrs)
-            await this.flush()
-        } else {
-            await this.render(children)
+            case 'figure': {
+                await this.render(children)
+                await this.flush()
+                break
+            }
+            case 'p': {
+                this.trim = true
+                const prev = this.elements[this.elements.length - 1]
+                if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
+                    if (!prev.textElement.content.endsWith('\n')) {
+                        prev.textElement.content += '\n'
+                    }
+                } else {
+                    this.text('\n')
+                }
+                await this.render(children)
+                this.text('\n')
+                break
+            }
+            case 'audio': {
+                await this.audio(attrs)
+                await this.flush()
+                break
+            }
+            case 'quote': {
+                this.quote(attrs)
+                break
+            }
+            default: {
+                await this.render(children)
+                break
+            }
         }
     }
 }

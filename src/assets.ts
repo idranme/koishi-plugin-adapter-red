@@ -8,7 +8,7 @@ import { encode } from 'node-silk-encode'
 import { conver } from 'image2png'
 
 const TMP_DIR = tmpdir()
-const NOOP = () => { }
+export const NOOP = () => { }
 
 export async function uploadAudio(buffer: Buffer) {
     const head = buffer.subarray(0, 7).toString()
@@ -41,7 +41,7 @@ interface transRet {
     silkFile: string
 }
 
-function audioTrans(tmpPath: string, samplingRate = '24000'): Promise<transRet> {
+export function audioTrans(tmpPath: string, samplingRate = '24000'): Promise<transRet> {
     return new Promise((resolve, reject) => {
         const pcmFile: string = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
         exec(`ffmpeg -y -i "${tmpPath}" -ar ${samplingRate} -ac 1 -f s16le "${pcmFile}"`, async () => {
@@ -63,7 +63,7 @@ function audioTrans(tmpPath: string, samplingRate = '24000'): Promise<transRet> 
     })
 }
 
-function getDuration(file: string): Promise<number> {
+export function getDuration(file: string): Promise<number> {
     return new Promise((resolve, reject) => {
         exec(`ffmpeg -i ${file}`, function (err, stdout, stderr) {
             const outStr = stderr.toString()
@@ -108,11 +108,15 @@ export function imageTrans(file: string): Promise<Buffer> {
     })
 }
 
-export async function image2png(file: string): Promise<Buffer> {
+export async function image2png(file: string) {
     const uuid = randomUUID({ disableEntropyCache: true })
-    const tmpfile = join(TMP_DIR, uuid + '.png')
+    const filename = uuid + '.png'
+    const tmpfile = join(TMP_DIR, filename)
     await conver(file, tmpfile)
-    const png = await readFile(tmpfile)
+    const data = await readFile(tmpfile)
     unlink(tmpfile, NOOP)
-    return png
+    return {
+        data,
+        filename
+    }
 }

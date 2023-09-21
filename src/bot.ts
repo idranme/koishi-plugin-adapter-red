@@ -1,7 +1,7 @@
 import { Bot, Context, Schema, Quester, Logger, Universal } from 'koishi'
 import { RedAdapter } from './adapter'
 import { Internal } from './types'
-import { RedMessageEncoder } from './message'
+import { RedMessageEncoder } from './messager'
 import { decodeGuildMember, decodeGuild, decodeUser } from './utils'
 
 export class RedBot extends Bot<RedBot.Config> {

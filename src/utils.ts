@@ -4,6 +4,8 @@ import { RedBot } from './bot'
 import * as face from 'qface'
 import FileType from 'file-type'
 
+const seqs = new Map()
+
 export function genPack(type: string, payload: any) {
     return JSON.stringify({
         type,
@@ -12,12 +14,17 @@ export function genPack(type: string, payload: any) {
 }
 
 export const decodeUser = (user: Friend): Universal.User => ({
+    id: user.uin,
+    name: user.nick,
     userId: user.uin,
     avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
     username: user.nick
 })
 
 export const decodeAuthor = (meta: Message): Universal.Author => ({
+    id: meta.senderUin,
+    name: meta.sendNickName,
+    nick: meta.sendMemberName || meta.sendNickName,
     userId: meta.senderUin,
     avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${meta.senderUin}&spec=640`,
     username: meta.sendNickName,
@@ -31,9 +38,8 @@ const roleMap = {
 }
 
 export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
-    userId: detail.uin,
-    username: detail.nick,
-    avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${detail.uin}&spec=640`,
+    ...decodeUser(detail),
+    user: decodeUser(detail),
     nickname: detail.nick,
     roles: [roleMap[detail.role]]
 })
@@ -85,13 +91,15 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                 ]))
             } else if (v.elementType === 7) {
                 // quote
-                //console.log(v.replyElement)
-                /*const { sourceMsgIdInRecords, senderUid } = v.replyElement as Dict
-                session.quote = {
-                    userId: senderUid,
-                    messageId: sourceMsgIdInRecords
+                const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
+                const msgId = replayMsgId !== '0' ? replayMsgId : seqs.get(replayMsgSeq)
+                if (msgId) {
+                    session.quote = {
+                        userId: senderUid,
+                        messageId: msgId
+                    }
+                    elements.push(h.quote(msgId))
                 }
-                elements.push(h.quote(sourceMsgIdInRecords))*/
             }
         }
     }
@@ -126,6 +134,8 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         const meta = input.payload[0]
         //console.log(meta)
         //console.log(meta.elements)
+
+        seqs.set(meta.msgSeq, meta.msgId)
 
         session.messageId = meta.msgId
         session.timestamp = new Date(meta.msgTime).valueOf() || Date.now()
