@@ -44,28 +44,24 @@ export class RedBot extends Bot<RedBot.Config> {
             group: guildId,
             size: 3000
         })
-        return {data: res.map(decodeGuildMember)}
+        return { data: res.map(decodeGuildMember) }
     }
 
     async deleteMessage(channelId: string, messageId: string) {
-        const data = await this.internal.recall({
+        let peerUin = channelId
+        let chatType = 2
+        if (channelId.includes('private:')) {
+            peerUin = channelId.split(':')[1]
+            chatType = 1
+        }
+        await this.internal.recall({
             msgIds: [messageId],
             peer: {
                 guildId: null,
-                peerUin: channelId,
-                chatType: 2
+                peerUin,
+                chatType
             }
         })
-        if (data.result === 5) {
-            await this.internal.recall({
-                msgIds: [messageId],
-                peer: {
-                    guildId: null,
-                    peerUin: channelId,
-                    chatType: 1
-                }
-            })
-        }
     }
 
     async muteGuildMember(guildId: string, userId: string, duration?: number, reason?: string) {
@@ -80,7 +76,7 @@ export class RedBot extends Bot<RedBot.Config> {
 
     async getFriendList(_next?: string) {
         const res = await this.internal.getFriendList()
-        return {data: res.map(decodeUser)}
+        return { data: res.map(decodeUser) }
     }
 
     /*

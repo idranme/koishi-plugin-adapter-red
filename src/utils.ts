@@ -4,8 +4,6 @@ import { RedBot } from './bot'
 import * as face from 'qface'
 import FileType from 'file-type'
 
-const seqs = new Map()
-
 export function genPack(type: string, payload: any) {
     return JSON.stringify({
         type,
@@ -92,14 +90,14 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
             } else if (v.elementType === 7) {
                 // quote
                 const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
-                const msgId = replayMsgId !== '0' ? replayMsgId : seqs.get(replayMsgSeq)
+                /*const msgId = replayMsgId !== '0' ? replayMsgId : seqs.get(replayMsgSeq)
                 if (msgId) {
                     session.quote = {
                         userId: senderUid,
                         messageId: msgId
                     }
                     elements.push(h.quote(msgId))
-                }
+                }*/
             }
         }
     }
@@ -135,14 +133,12 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         //console.log(meta)
         //console.log(meta.elements)
 
-        seqs.set(meta.msgSeq, meta.msgId)
-
         session.messageId = meta.msgId
         session.timestamp = new Date(meta.msgTime).valueOf() || Date.now()
         session.author = decodeAuthor(meta)
         session.userId = meta.senderUin
         session.isDirect = meta.chatType === 1
-        session.channelId = meta.peerUin
+        session.channelId = session.isDirect ? 'private:' + meta.peerUin : meta.peerUin
         session.subtype = session.isDirect ? 'private' : 'group'
         if (!session.isDirect) {
             session.guildId = meta.peerUin

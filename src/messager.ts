@@ -30,10 +30,16 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 }
             }
         }
+        let peerUin = this.session.channelId
+        let chatType = 2
+        if(this.session.channelId.includes('private:')){
+            peerUin = this.session.channelId.split(':')[1]
+            chatType = 1
+        }
         this.bot.internal._wsRequest('message::send', {
             peer: {
-                chatType: this.session.isDirect ? 1 : 2,
-                peerUin: this.session.channelId,
+                chatType,
+                peerUin,
                 guildId: null
             },
             elements: this.elements
