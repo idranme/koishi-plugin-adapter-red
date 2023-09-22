@@ -1,4 +1,4 @@
-import { Bot, Context, Schema, Quester, Logger, Universal } from 'koishi'
+import { Bot, Context, Schema, Quester, Logger, Fragment, SendOptions } from 'koishi'
 import { RedAdapter } from './adapter'
 import { Internal } from './types'
 import { RedMessageEncoder } from './messager'
@@ -24,6 +24,10 @@ export class RedBot extends Bot<RedBot.Config> {
         this.platform = 'red'
         this.logger = ctx.logger('red')
         ctx.plugin(RedAdapter, this)
+    }
+
+    sendPrivateMessage(userId: string, fragment: Fragment, options?: SendOptions) {
+        return this.sendMessage('private:' + userId, fragment, null, options)
     }
 
     async getGuildList(_next?: string) {
