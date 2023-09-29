@@ -14,8 +14,9 @@ export class RedAdapter extends Adapter.WsClient<RedBot> {
         this.bot.socket.addEventListener('message', async ({ data }) => {
             const parsed: WsEvents = JSON.parse(data.toString())
             if (parsed.type === 'meta::connect') {
+                this.bot.redImplName = (parsed as WsEvents<'ConnectRecv'>).payload.name
                 const selfId = (parsed as WsEvents<'ConnectRecv'>).payload.authData.uin
-                if (selfId !== this.bot.selfId){
+                if (selfId !== this.bot.selfId) {
                     return this.bot.socket.close(1008, `invalid selfId: ${selfId}`)
                 }
                 const user = decodeUser(await this.bot.internal.getSelfProfile())

@@ -78,8 +78,7 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
             } else if (v.elementType === 4) {
                 // audio
                 const file = await getFile(bot, meta, v.elementId)
-                const mime = file.headers['content-type']
-                elements.push(h.audio(file.data, mime))
+                elements.push(h.audio(file.data, 'application/octet-stream'))
             } else if (v.elementType === 6) {
                 // face
                 const { faceText, faceIndex, faceType } = v.faceElement as Dict

@@ -182,18 +182,25 @@ export interface Recall {
     peer: Peer
 }
 
-export interface getHistory {
+export interface GetHistory {
     peer: Peer,
     offsetMsgId?: string, // 偏移，从哪条开始
     count: number // 数量
 }
 
+export interface Send {
+    peer: Peer
+    elements: Element[]
+}
+
 declare module './internal' {
     interface Internal {
         recall(data: Recall): Promise<any>
-        getHistory(data: getHistory): Promise<any>
+        getHistory(data: GetHistory): Promise<any>
+        send(data: Send): Promise<any>
     }
 }
 
 Internal.define('/message/recall', { POST: 'recall' })
 Internal.define('/message/getHistory', { POST: 'getHistory' })
+Internal.define('/message/send', { POST: 'send' })

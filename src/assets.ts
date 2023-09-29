@@ -5,7 +5,6 @@ import { exec } from 'child_process'
 import { tmpdir } from 'os'
 import { unlink, access, constants } from 'fs'
 import { encode } from 'node-silk-encode'
-import { conver } from 'image2png'
 
 const TMP_DIR = tmpdir()
 export const NOOP = () => { }
@@ -52,7 +51,7 @@ export function audioTrans(tmpPath: string, samplingRate = '24000'): Promise<tra
                 }
             })
 
-            const silkFile = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+            const silkFile = join(TMP_DIR, randomUUID({ disableEntropyCache: true }) + '.amr')
             await encode(pcmFile, silkFile, samplingRate)
             unlink(pcmFile, NOOP)
 
@@ -106,17 +105,4 @@ export function imageTrans(file: string): Promise<Buffer> {
             }
         })
     })
-}
-
-export async function image2png(file: string) {
-    const uuid = randomUUID({ disableEntropyCache: true })
-    const filename = uuid + '.png'
-    const tmpfile = join(TMP_DIR, filename)
-    await conver(file, tmpfile)
-    const data = await readFile(tmpfile)
-    unlink(tmpfile, NOOP)
-    return {
-        data,
-        filename
-    }
 }

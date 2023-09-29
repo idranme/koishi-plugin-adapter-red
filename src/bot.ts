@@ -1,14 +1,15 @@
 import { Bot, Context, Schema, Quester, Logger, Fragment, SendOptions } from 'koishi'
 import { RedAdapter } from './adapter'
-import { Internal } from './types'
+import { Internal, Message } from './types'
 import { RedMessageEncoder } from './messager'
-import { decodeGuildMember, decodeGuild, decodeUser } from './utils'
+import { decodeGuildMember, decodeGuild, decodeUser, decodeMessage } from './utils'
 
 export class RedBot extends Bot<RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
     http: Quester
     logger: Logger
     declare internal: Internal
+    redImplName: string
 
     constructor(ctx: Context, config: RedBot.Config) {
         super(ctx, config)
@@ -83,19 +84,46 @@ export class RedBot extends Bot<RedBot.Config> {
         return { data: res.map(decodeUser) }
     }
 
-    /*
-    async getMessageList(channelId: string, before?: string) {
-        const data = await this.internal.getHistory({
+    async getMessageList(channelId: string, next?: string) {
+        let peerUin = channelId
+        let chatType = 2
+        if (channelId.includes('private:')) {
+            peerUin = channelId.split(':')[1]
+            chatType = 1
+        }
+        const res = await this.internal.getHistory({
             peer: {
                 guildId: null,
-                peerUin: channelId,
-                chatType: 2
+                peerUin,
+                chatType
             },
-            count: 50
+            offsetMsgId: next,
+            count: 100
         })
-        console.log(data)
+        const data = await Promise.all(res.msgList.reverse().map((data: Message) => decodeMessage(this, data)))
+        return { data, next: data[0]?.id }
     }
-    */
+
+    /*
+    async getMessage(channelId: string, messageId: string) {
+        let peerUin = channelId
+        let chatType = 2
+        if (channelId.includes('private:')) {
+            peerUin = channelId.split(':')[1]
+            chatType = 1
+        }
+        const res = await this.internal.getHistory({
+            peer: {
+                guildId: null,
+                peerUin,
+                chatType
+            },
+            offsetMsgId: messageId,
+            count: 1
+        })
+        console.log(res)
+        return await decodeMessage(this, res.msgList[0])
+    }*/
 
     async getSelf() {
         const data = await this.internal.getSelfProfile()

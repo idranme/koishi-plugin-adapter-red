@@ -3,7 +3,7 @@ import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
-import { uploadAudio, saveTmp, image2png, audioTrans, getDuration, NOOP } from './assets'
+import { saveTmp, audioTrans, getDuration, NOOP } from './assets'
 import { unlink } from 'fs'
 import { basename } from 'path'
 import { readFile } from 'fs/promises'
@@ -13,7 +13,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     trim = false
 
     async flush(): Promise<void> {
-        //console.log(this.elements)
+        if (this.elements.length === 0) return
         if (this.trim) {
             const first = this.elements[0]
             if (first?.elementType === 1 && first?.textElement.atType === 0) {
@@ -32,20 +32,33 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         }
         let peerUin = this.session.channelId
         let chatType = 2
-        if(this.session.channelId.includes('private:')){
+        if (this.session.channelId.includes('private:')) {
             peerUin = this.session.channelId.split(':')[1]
             chatType = 1
         }
-        this.bot.internal._wsRequest('message::send', {
-            peer: {
-                chatType,
-                peerUin,
-                guildId: null
-            },
-            elements: this.elements
-        })
+        let msgId = ''
+        if (this.bot.redImplName === 'chronocat') {
+            const res = await this.bot.internal.send({
+                peer: {
+                    chatType,
+                    peerUin,
+                    guildId: null
+                },
+                elements: this.elements
+            })
+            msgId = res.msgId
+        } else {
+            this.bot.internal._wsRequest('message::send', {
+                peer: {
+                    chatType,
+                    peerUin,
+                    guildId: null
+                },
+                elements: this.elements
+            })
+        }
         const session = this.bot.session()
-        session.messageId = ''
+        session.messageId = msgId
         session.timestamp = +new Date()
         session.userId = this.bot.selfId
         this.results.push(session)
@@ -85,57 +98,16 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         }
     }
 
-    private async uploadImage(attrs: Dict) {
+    private async image(attrs: Dict) {
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
         let buffer = Buffer.from(data)
         let opt = {
             filename,
             contentType: mime ?? 'image/png'
         }
-        const head = buffer.subarray(0, 14).toString()
-        if (head.includes('WEBP') || head.includes('JFIF')) {
-            this.bot.logger.info('检测消息含有可能无法发送的图片，即将尝试转换格式以修复该问题')
-            const tmpPath = await saveTmp(buffer, head.includes('JFIF') ? 'jpeg' : 'webp')
-            const { data, filename } = await image2png(tmpPath)
-            unlink(tmpPath, noop)
-            this.bot.logger.info('图片已转码为 png')
-            buffer = data
-            opt.filename = filename
-            opt.contentType = 'image/png'
-        }
         const payload = new FormData()
         payload.append('file', buffer, opt)
-        return this.bot.internal.uploadFile(payload)
-    }
-
-    private async uploadAudio(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
-
-        let buffer = Buffer.from(data)
-        let opt = {
-            filename,
-            contentType: mime ?? 'audio/amr'
-        }
-
-        const head = buffer.subarray(0, 7).toString()
-        let duration = 0
-        if (!head.includes('SILK')) {
-            const tmpPath = await saveTmp(buffer)
-            duration = await getDuration(tmpPath)
-            const res = await audioTrans(tmpPath)
-            buffer = await readFile(res.silkFile)
-            unlink(res.silkFile, NOOP)
-            opt.filename = basename(res.silkFile)
-            opt.contentType = 'audio/amr'
-        }
-
-        const payload = new FormData()
-        payload.append('file', buffer, opt)
-        return { file: await this.bot.internal.uploadFile(payload), duration }
-    }
-
-    private async image(attrs: Dict) {
-        const file = await this.uploadImage(attrs)
+        const file = await this.bot.internal.uploadFile(payload)
 
         let picType = 1000
         switch (file.imageInfo.type) {
@@ -168,6 +140,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             contentType: mime ?? 'application/octet-stream'
         })
         const res = await this.bot.internal.uploadFile(form)
+        
         this.elements.push({
             elementType: 3,
             fileElement: {
@@ -198,19 +171,38 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     }
 
     private async audio(attrs: Dict) {
-        const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
-        const file = await uploadAudio(Buffer.from(data))
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        let buffer = Buffer.from(data)
+        let opt = {
+            filename,
+            contentType: mime ?? 'audio/amr'
+        }
+        const head = buffer.subarray(0, 7).toString()
+        let duration = 0
+        if (!head.includes('SILK')) {
+            const tmpPath = await saveTmp(buffer)
+            duration = await getDuration(tmpPath)
+            const res = await audioTrans(tmpPath)
+            buffer = await readFile(res.silkFile)
+            unlink(res.silkFile, NOOP)
+            opt.filename = basename(res.silkFile)
+            opt.contentType = 'audio/amr'
+        }
+        const payload = new FormData()
+        payload.append('file', buffer, opt)
+        const file = await this.bot.internal.uploadFile(payload)
+
         this.elements.push({
             elementType: 4,
             pttElement: {
                 md5HexStr: file.md5,
                 fileSize: file.fileSize,
-                fileName: file.md5 + '.amr',
-                filePath: file.filePath,
+                fileName: basename(file.ntFilePath),
+                filePath: file.ntFilePath,
                 waveAmplitudes: [
-                    99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+                    99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
                 ],
-                duration: file.duration
+                duration: duration
             }
         } as any)
     }
