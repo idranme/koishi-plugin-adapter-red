@@ -37,6 +37,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             chatType = 1
         }
         let msgId = ''
+        let sentTimestamp = undefined
         if (this.bot.redImplName === 'chronocat') {
             const res = await this.bot.internal.send({
                 peer: {
@@ -47,6 +48,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 elements: this.elements
             })
             msgId = res.msgId
+            sentTimestamp = res.msgTime * 1000
         } else {
             this.bot.internal._wsRequest('message::send', {
                 peer: {
@@ -58,9 +60,13 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             })
         }
         const session = this.bot.session()
+        session.type = 'send'
         session.messageId = msgId
-        session.timestamp = +new Date()
-        session.userId = this.bot.selfId
+        session.timestamp = sentTimestamp ?? +new Date()
+        session.channelId = this.session.channelId
+        if (chatType === 2) {
+            session.guildId = peerUin
+        }
         this.results.push(session)
         session.app.emit(session, 'send', session)
 
@@ -140,7 +146,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             contentType: mime ?? 'application/octet-stream'
         })
         const res = await this.bot.internal.uploadFile(form)
-        
+
         this.elements.push({
             elementType: 3,
             fileElement: {
