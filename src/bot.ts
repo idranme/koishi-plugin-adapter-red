@@ -10,6 +10,7 @@ export class RedBot extends Bot<RedBot.Config> {
     logger: Logger
     declare internal: Internal
     redImplName: string
+    seqCache = new Map()
 
     constructor(ctx: Context, config: RedBot.Config) {
         super(ctx, config)

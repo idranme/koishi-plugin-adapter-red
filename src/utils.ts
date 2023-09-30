@@ -89,14 +89,16 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
             } else if (v.elementType === 7) {
                 // quote
                 const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
-                /*const msgId = replayMsgId !== '0' ? replayMsgId : seqs.get(replayMsgSeq)
+                const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(meta.peerUin + '/' + replayMsgSeq)
                 if (msgId) {
                     session.quote = {
+                        messageId: msgId,
                         userId: senderUid,
-                        messageId: msgId
+                        content: ''
                     }
-                    elements.push(h.quote(msgId))
-                }*/
+                } else {
+                    bot.logger.warn('由用户 %o (%o) 发送的消息的 quote 部分无法获取，请确保机器人保持运行状态。若无问题，可忽视此信息。', session.userId, session.author.name)
+                }
             }
         }
     }
@@ -131,6 +133,8 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         const meta = input.payload[0]
         //console.log(meta)
         //console.log(meta.elements)
+
+        bot.seqCache.set(meta.peerUin + '/' + meta.msgSeq, meta.msgId)
 
         session.messageId = meta.msgId
         session.timestamp = new Date(meta.msgTime).valueOf() || Date.now()

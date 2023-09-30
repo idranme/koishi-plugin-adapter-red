@@ -47,6 +47,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 },
                 elements: this.elements
             })
+            this.bot.seqCache.set(res.peerUin + '/' + res.msgSeq, res.msgId)
             msgId = res.msgId
             sentTimestamp = res.msgTime * 1000
         } else {
