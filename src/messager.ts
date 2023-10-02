@@ -106,7 +106,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
     }
 
     private async image(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
         let buffer = Buffer.from(data)
         let opt = {
             filename,
@@ -134,7 +134,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 sourcePath: file.ntFilePath,
                 picHeight: file.imageInfo.height,
                 picWidth: file.imageInfo.width,
-                picType
+                picType,
             }
         } as any)
     }
