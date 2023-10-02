@@ -73,11 +73,15 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
                 // image
                 // picsubtype 为0是图片 为1是动画表情
                 const file = await getFile(bot, meta, v.elementId)
+                //const url = 'file:///' + v.picElement.sourcePath.replaceAll('\\', '/')
+                //elements.push(h.image(url))
                 const { mime } = await FileType.fromBuffer(file.data)
                 elements.push(h.image(file.data, mime))
             } else if (v.elementType === 4) {
                 // audio
                 const file = await getFile(bot, meta, v.elementId)
+                //const url = 'file:///' + (v.pttElement as any).filePath.replaceAll('\\', '/')
+                //elements.push(h.audio(url))
                 elements.push(h.audio(file.data, 'application/octet-stream'))
             } else if (v.elementType === 6) {
                 // face
@@ -119,8 +123,6 @@ async function getFile(bot: RedBot, meta: Message, elementId: string) {
             chatType: meta.chatType,
             peerUid: meta.peerUin,
             elementId,
-            thumbSize: 0,
-            downloadType: 2
         },
         responseType: 'arraybuffer'
     })

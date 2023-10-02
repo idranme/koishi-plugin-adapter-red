@@ -151,10 +151,9 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         this.elements.push({
             elementType: 3,
             fileElement: {
-                fileName: basename(res.filePath),
+                fileName: res.filePath.split('-').at(-1),
                 filePath: res.filePath,
                 fileSize: String(res.fileSize),
-                picThumbPath: {},
                 thumbFileSize: 750,
             },
         } as any)
@@ -223,6 +222,29 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         } as any)
     }
 
+    private async video(attrs: Dict) {
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        let buffer = Buffer.from(data)
+        let opt = {
+            filename,
+            contentType: mime ?? 'video/mp4'
+        }
+        const payload = new FormData()
+        payload.append('file', buffer, opt)
+        const file = await this.bot.internal.uploadFile(payload)
+
+        this.elements.push({
+            elementType: 5,
+            videoElement: {
+                filePath: file.ntFilePath,
+                fileName: basename(file.ntFilePath),
+                videoMd5: file.md5,
+                thumbSize: 750,
+                fileSize: String(file.fileSize),
+            },
+        } as any)
+    }
+
     async visit(element: h) {
         const { type, attrs, children } = element
         switch (type) {
@@ -279,6 +301,16 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 this.quote(attrs)
                 break
             }
+            case 'file': {
+                await this.file(attrs)
+                await this.flush()
+                break
+            }
+            /*case 'video': {
+                await this.video(attrs)
+                await this.flush()
+                break
+            }*/
             default: {
                 await this.render(children)
                 break
