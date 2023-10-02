@@ -7,6 +7,7 @@ import { saveTmp, audioTrans, getDuration, NOOP } from './assets'
 import { unlink } from 'fs'
 import { basename } from 'path'
 import { readFile } from 'fs/promises'
+import { decodeMessage } from './utils'
 
 export class RedMessageEncoder extends MessageEncoder<RedBot> {
     elements: Element[] = []
@@ -14,6 +15,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
 
     async flush(): Promise<void> {
         if (this.elements.length === 0) return
+
         if (this.trim) {
             const first = this.elements[0]
             if (first?.elementType === 1 && first?.textElement.atType === 0) {
@@ -30,14 +32,14 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 }
             }
         }
+        
         let peerUin = this.session.channelId
         let chatType = 2
         if (this.session.channelId.includes('private:')) {
             peerUin = this.session.channelId.split(':')[1]
             chatType = 1
         }
-        let msgId = ''
-        let sentTimestamp = undefined
+
         if (this.bot.redImplName === 'chronocat') {
             const res = await this.bot.internal.send({
                 peer: {
@@ -47,9 +49,13 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 },
                 elements: this.elements
             })
+
             this.bot.seqCache.set(res.peerUin + '/' + res.msgSeq, res.msgId)
-            msgId = res.msgId
-            sentTimestamp = res.msgTime * 1000
+
+            const session = this.bot.session()
+            await decodeMessage(this.bot, res, session.event.message = {}, session.event)
+            this.results.push(session.event.message)
+            session.app.emit(session, 'send', session)
         } else {
             this.bot.internal._wsRequest('message::send', {
                 peer: {
@@ -59,17 +65,9 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 },
                 elements: this.elements
             })
+
+            this.results.push({ id: '' })
         }
-        const session = this.bot.session()
-        session.type = 'send'
-        session.messageId = msgId
-        session.timestamp = sentTimestamp ?? +new Date()
-        session.channelId = this.session.channelId
-        if (chatType === 2) {
-            session.guildId = peerUin
-        }
-        this.results.push(session)
-        session.app.emit(session, 'send', session)
 
         this.elements = []
     }

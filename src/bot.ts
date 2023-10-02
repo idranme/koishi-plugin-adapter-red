@@ -1,8 +1,8 @@
-import { Bot, Context, Schema, Quester, Logger, Fragment, SendOptions } from 'koishi'
-import { RedAdapter } from './adapter'
+import { Bot, Context, Schema, Quester, Logger, Fragment } from 'koishi'
+import { WsClient } from './ws'
 import { Internal, Message } from './types'
-import { RedMessageEncoder } from './messager'
-import { decodeGuildMember, decodeGuild, decodeUser, decodeMessage } from './utils'
+import { RedMessageEncoder } from './message'
+import { decodeGuildMember, decodeUser, decodeMessage, decodeFirendUser } from './utils'
 
 export class RedBot extends Bot<RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
@@ -25,17 +25,13 @@ export class RedBot extends Bot<RedBot.Config> {
         this.internal = new Internal(this.http)
         this.platform = 'red'
         this.logger = ctx.logger('red')
-        ctx.plugin(RedAdapter, this)
+        ctx.plugin(WsClient, this)
     }
 
-    sendPrivateMessage(userId: string, fragment: Fragment, options?: SendOptions) {
-        return this.sendMessage('private:' + userId, fragment, null, options)
-    }
-
-    async getGuildList(_next?: string) {
+    /*async getGuildList(_next?: string) {
         const res = await this.internal.getGroupList()
         return { data: res.map(decodeGuild) }
-    }
+    }*/
 
     async kickGuildMember(guildId: string, userId: string, permanent?: boolean) {
         await this.internal.kick({
@@ -82,9 +78,10 @@ export class RedBot extends Bot<RedBot.Config> {
 
     async getFriendList(_next?: string) {
         const res = await this.internal.getFriendList()
-        return { data: res.map(decodeUser) }
+        return { data: res.map(decodeFirendUser) }
     }
 
+    /*
     async getMessageList(channelId: string, next?: string) {
         let peerUin = channelId
         let chatType = 2
@@ -103,7 +100,7 @@ export class RedBot extends Bot<RedBot.Config> {
         })
         const data = await Promise.all(res.msgList.reverse().map((data: Message) => decodeMessage(this, data)))
         return { data, next: data[0]?.id }
-    }
+    }*/
 
     /*
     async getMessage(channelId: string, messageId: string) {
@@ -128,13 +125,14 @@ export class RedBot extends Bot<RedBot.Config> {
 
     async getSelf() {
         const data = await this.internal.getSelfProfile()
-        return decodeUser(data)
+        return decodeFirendUser(data)
     }
 }
 
 export namespace RedBot {
-    export interface Config extends Bot.Config, Quester.Config, RedAdapter.Config {
+    export interface Config extends Quester.Config, WsClient.Config {
         token: string
+        selfId: string
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -142,7 +140,7 @@ export namespace RedBot {
             token: Schema.string().description('用户令牌。').role('secret').required(),
             selfId: Schema.string().description('机器人的账号。').required(),
         }),
-        RedAdapter.Config,
+        WsClient.Config,
         Quester.createConfig('http://127.0.0.1:16530'),
     ])
 }

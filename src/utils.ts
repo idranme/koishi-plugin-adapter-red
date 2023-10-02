@@ -11,7 +11,15 @@ export function genPack(type: string, payload: any) {
     })
 }
 
-export const decodeUser = (user: Friend): Universal.User => ({
+/*export const decodeUser = (user: Friend): Universal.User => ({
+    id: user.uin,
+    name: user.nick,
+    userId: user.uin,
+    avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
+    username: user.nick
+})*/
+
+export const decodeFirendUser = (user: Friend): Universal.User => ({
     id: user.uin,
     name: user.nick,
     userId: user.uin,
@@ -19,14 +27,12 @@ export const decodeUser = (user: Friend): Universal.User => ({
     username: user.nick
 })
 
-export const decodeAuthor = (meta: Message): Universal.Author => ({
-    id: meta.senderUin,
-    name: meta.sendNickName,
-    nick: meta.sendMemberName || meta.sendNickName,
-    userId: meta.senderUin,
-    avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${meta.senderUin}&spec=640`,
-    username: meta.sendNickName,
-    nickname: meta.sendMemberName || meta.sendNickName,
+export const decodeUser = (data: Message): Universal.User => ({
+    id: data.senderUin,
+    name: data.sendNickName,
+    userId: data.senderUin,
+    avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${data.senderUin}&spec=640`,
+    username: data.sendNickName,
 })
 
 const roleMap = {
@@ -35,24 +41,23 @@ const roleMap = {
     4: 'owner'
 }
 
-export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
-    ...decodeUser(detail),
-    user: decodeUser(detail),
-    nickname: detail.nick,
-    roles: [roleMap[detail.role]]
+export const decodeGuildMember = (data: Message): Universal.GuildMember => ({
+    user: decodeUser(data),
+    name: data.sendMemberName || data.sendNickName,
+    //roles: [roleMap[detail.role]]
 })
 
-export const decodeGuild = (info: Group): Universal.Guild => ({
-    id: info.groupCode,
-    name: info.groupName,
-    guildId: info.groupCode,
-    guildName: info.groupName
-})
+export async function decodeMessage(
+    bot: RedBot,
+    data: Message,
+    message: Universal.Message = {},
+    payload: Universal.MessageLike = message
+) {
+    message.id = message.messageId = data.msgId
 
-export async function decodeMessage(bot: RedBot, meta: Message, session: Partial<Session> = {}) {
     const elements = []
-    if (meta.elements) {
-        for await (const v of meta.elements) {
+    if (data.elements) {
+        for await (const v of data.elements) {
             if (v.elementType === 1) {
                 // text
                 const { atType, atUid, content, atNtUin } = v.textElement
@@ -72,14 +77,14 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
             } else if (v.elementType === 2) {
                 // image
                 // picsubtype 为0是图片 为1是动画表情
-                const file = await getFile(bot, meta, v.elementId)
+                const file = await getFile(bot, data, v.elementId)
                 //const url = 'file:///' + v.picElement.sourcePath.replaceAll('\\', '/')
                 //elements.push(h.image(url))
                 const { mime } = await FileType.fromBuffer(file.data)
                 elements.push(h.image(file.data, mime))
             } else if (v.elementType === 4) {
                 // audio
-                const file = await getFile(bot, meta, v.elementId)
+                const file = await getFile(bot, data, v.elementId)
                 //const url = 'file:///' + (v.pttElement as any).filePath.replaceAll('\\', '/')
                 //elements.push(h.audio(url))
                 elements.push(h.audio(file.data, 'application/octet-stream'))
@@ -93,26 +98,42 @@ export async function decodeMessage(bot: RedBot, meta: Message, session: Partial
             } else if (v.elementType === 7) {
                 // quote
                 const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
-                const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(meta.peerUin + '/' + replayMsgSeq)
+                const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(data.peerUin + '/' + replayMsgSeq)
                 if (msgId) {
-                    session.quote = {
+                    message.quote = {
                         messageId: msgId,
-                        userId: senderUid,
+                        user: {
+                            id: senderUid
+                        },
                         content: ''
                     }
                 } else {
-                    bot.logger.warn('由用户 %o (%o) 发送的消息的 quote 部分无法获取，请确保机器人保持运行状态。若无问题，可忽视此信息。', session.userId, session.author.name)
+                    //bot.logger.warn('由用户 %o (%o) 发送的消息的 quote 部分无法获取，请确保机器人保持运行状态。若无问题，可忽视此信息。', session.userId, session.author.name)
                 }
             }
         }
     }
 
-    session.elements = elements
-    session.content = elements.join('')
+    message.elements = elements
+    message.content = elements.join('')
 
-    session.elements = h.parse(session.content)
+    if (!payload) return message
 
-    return session as Universal.Message
+    const [guildId, channelId] = decodeGuildChannelId(data)
+
+    payload.user = decodeUser(data)
+    payload.member = decodeGuildMember(data)
+    payload.timestamp = (data.msgTime as any) * 1000
+    payload.guild = guildId && { id: guildId }
+    payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT }
+}
+
+const decodeGuildChannelId = (data: Message) => {
+    if (data.chatType === 2) {
+        return [data.peerUin, data.peerUin]
+    } else {
+        return [undefined, 'private:' + data.peerUin]
+    }
 }
 
 async function getFile(bot: RedBot, meta: Message, elementId: string) {
@@ -132,33 +153,37 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
     const session = bot.session()
     if (input?.type === 'message::recv') {
         if (input.payload.length === 0) return
-        const meta = input.payload[0]
-        //console.log(meta)
-        //console.log(meta.elements)
 
-        bot.seqCache.set(meta.peerUin + '/' + meta.msgSeq, meta.msgId)
+        const data = input.payload[0]
+        //console.log(data)
+        //console.log(data.elements)
 
-        session.messageId = meta.msgId
-        session.timestamp = new Date(meta.msgTime).valueOf() || Date.now()
-        session.author = decodeAuthor(meta)
-        session.userId = meta.senderUin
-        session.isDirect = meta.chatType === 1
-        session.channelId = session.isDirect ? 'private:' + meta.peerUin : meta.peerUin
-        session.subtype = session.isDirect ? 'private' : 'group'
-        if (!session.isDirect) {
-            session.guildId = meta.peerUin
-        }
+        bot.seqCache.set(data.peerUin + '/' + data.msgSeq, data.msgId)
 
-        switch (meta.msgType) {
+        switch (data.msgType) {
             case 2:
             case 6:
             case 8:
             case 9: {
                 session.type = 'message'
-                await decodeMessage(bot, meta, session)
-                if (session.elements.length === 0) return
-                break
+                session.isDirect = data.chatType === 1
+                session.subtype = session.isDirect ? 'private' : 'group'
+                await decodeMessage(bot, data, session.event.message = {}, session.event)
+                if (!session.content) return
+                return session
             }
+        }
+
+        session.messageId = data.msgId
+        session.timestamp = (data.msgTime as any) * 1000
+        session.userId = data.senderUin
+        session.channelId = data.chatType === 1 ? 'private:' + data.peerUin : data.peerUin
+        session.subtype = data.chatType === 1 ? 'private' : 'group'
+        if (data.chatType === 2) {
+            session.guildId = data.peerUin
+        }
+
+        switch (data.msgType) {
             case 3: {
                 session.type = 'guild-file-added'
                 /*const element = meta.elements[0]
@@ -170,31 +195,20 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                 break
             }
             case 5: {
-                if (meta.subMsgType === 8) {
-                    const groupElement = meta.elements[0].grayTipElement.groupElement as any
+                if (data.subMsgType === 8) {
+                    const groupElement = data.elements[0].grayTipElement.groupElement as any
                     if (groupElement.type === 1) {
                         session.type = 'guild-member-added'
                         session.operatorId = groupElement.adminUin
-                        const uin = groupElement.memberUin
-                        session.author = {
-                            userId: uin,
-                            avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uin}&spec=640`,
-                            username: groupElement.memberNick,
-                            nickname: groupElement.memberNick,
-                        }
-                        session.userId = uin
+                        session.userId = groupElement.memberUin
                     } else {
                         return
                     }
-                } else if (meta.subMsgType === 12) {
-                    const { content } = meta.elements[0].grayTipElement.xmlElement
+                } else if (data.subMsgType === 12) {
+                    const { content } = data.elements[0].grayTipElement.xmlElement
                     const uins = content.match(/(?<=jp=")[0-9]+(?=")/g)
                     session.type = 'guild-member-added'
                     session.operatorId = uins[0]
-                    session.author = {
-                        userId: uins[1],
-                        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uins[1]}&spec=640`
-                    }
                     session.userId = uins[1]
                 } else {
                     return
@@ -204,6 +218,7 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
             default:
                 return
         }
+
     } else {
         return
     }
