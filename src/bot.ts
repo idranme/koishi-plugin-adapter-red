@@ -1,8 +1,8 @@
-import { Bot, Context, Schema, Quester, Logger, Fragment } from 'koishi'
+import { Bot, Context, Schema, Quester, Logger, Universal } from 'koishi'
 import { WsClient } from './ws'
 import { Internal, Message } from './types'
 import { RedMessageEncoder } from './message'
-import { decodeGuildMember, decodeUser, decodeMessage, decodeFirendUser } from './utils'
+import { decodeGuildMember, decodeGuild, decodeFirendUser, decodeMessage } from './utils'
 
 export class RedBot extends Bot<RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
@@ -28,10 +28,14 @@ export class RedBot extends Bot<RedBot.Config> {
         ctx.plugin(WsClient, this)
     }
 
-    /*async getGuildList(_next?: string) {
+    async createDirectChannel(userId: string) {
+        return { id: 'private:' + userId, type: Universal.Channel.Type.DIRECT }
+    }
+
+    async getGuildList(_next?: string) {
         const res = await this.internal.getGroupList()
         return { data: res.map(decodeGuild) }
-    }*/
+    }
 
     async kickGuildMember(guildId: string, userId: string, permanent?: boolean) {
         await this.internal.kick({
@@ -81,7 +85,6 @@ export class RedBot extends Bot<RedBot.Config> {
         return { data: res.map(decodeFirendUser) }
     }
 
-    /*
     async getMessageList(channelId: string, next?: string) {
         let peerUin = channelId
         let chatType = 2
@@ -100,7 +103,7 @@ export class RedBot extends Bot<RedBot.Config> {
         })
         const data = await Promise.all(res.msgList.reverse().map((data: Message) => decodeMessage(this, data)))
         return { data, next: data[0]?.id }
-    }*/
+    }
 
     /*
     async getMessage(channelId: string, messageId: string) {
@@ -123,9 +126,10 @@ export class RedBot extends Bot<RedBot.Config> {
         return await decodeMessage(this, res.msgList[0])
     }*/
 
-    async getSelf() {
+    async getLogin() {
         const data = await this.internal.getSelfProfile()
-        return decodeFirendUser(data)
+        this.user = decodeFirendUser(data)
+        return this.toJSON()
     }
 }
 

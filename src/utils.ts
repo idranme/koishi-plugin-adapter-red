@@ -11,13 +11,10 @@ export function genPack(type: string, payload: any) {
     })
 }
 
-/*export const decodeUser = (user: Friend): Universal.User => ({
-    id: user.uin,
-    name: user.nick,
-    userId: user.uin,
-    avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
-    username: user.nick
-})*/
+export const decodeGuild = (guild: Group): Universal.Guild => ({
+    id: guild.groupCode,
+    name: guild.groupName,
+})
 
 export const decodeFirendUser = (user: Friend): Universal.User => ({
     id: user.uin,
@@ -44,7 +41,6 @@ const roleMap = {
 export const decodeGuildMember = (data: Message): Universal.GuildMember => ({
     user: decodeUser(data),
     name: data.sendMemberName || data.sendNickName,
-    //roles: [roleMap[detail.role]]
 })
 
 export async function decodeMessage(
@@ -124,7 +120,7 @@ export async function decodeMessage(
     payload.user = decodeUser(data)
     payload.member = decodeGuildMember(data)
     payload.timestamp = (data.msgTime as any) * 1000
-    payload.guild = guildId && { id: guildId }
+    payload.guild = guildId && { id: guildId, name: data.peerName }
     payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT }
 }
 
