@@ -32,7 +32,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 }
             }
         }
-        
+
         let peerUin = this.session.channelId
         let chatType = 2
         if (this.session.channelId.includes('private:')) {

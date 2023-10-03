@@ -201,8 +201,11 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                     const groupElement = data.elements[0].grayTipElement.groupElement as any
                     if (groupElement.type === 1) {
                         session.type = 'guild-member-added'
-                        session.operatorId = groupElement.adminUin
-                        session.userId = groupElement.memberUin
+                        session.operatorId = groupElement.memberUin
+                        session.event.user = {
+                            id: groupElement.memberUin,
+                            avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${groupElement.memberUin}&spec=640`
+                        }
                     } else {
                         return
                     }
@@ -211,7 +214,10 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                     const uins = content.match(/(?<=jp=")[0-9]+(?=")/g)
                     session.type = 'guild-member-added'
                     session.operatorId = uins[0]
-                    session.userId = uins[1]
+                    session.event.user = {
+                        id: uins[1],
+                        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uins[1]}&spec=640`
+                    }
                 } else {
                     return
                 }
