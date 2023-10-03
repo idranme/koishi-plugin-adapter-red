@@ -2,7 +2,7 @@ import { Bot, Context, Schema, Quester, Logger, Universal } from 'koishi'
 import { WsClient } from './ws'
 import { Internal, Message } from './types'
 import { RedMessageEncoder } from './message'
-import { decodeGuildMember, decodeGuild, decodeFirendUser, decodeMessage } from './utils'
+import { decodeGuildMember, decodeGuild, decodeFirendUser, decodeMessage, decodeChannel } from './utils'
 
 export class RedBot extends Bot<RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
@@ -130,6 +130,12 @@ export class RedBot extends Bot<RedBot.Config> {
         const data = await this.internal.getSelfProfile()
         this.user = decodeFirendUser(data)
         return this.toJSON()
+    }
+
+    async getChannelList(guildId: string) {
+        const res = await this.internal.getGroupList()
+        const channel = res.find((element) => element.groupCode === guildId)
+        return { data: [decodeChannel(channel)] }
     }
 }
 

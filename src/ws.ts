@@ -19,8 +19,7 @@ export class WsClient extends Adapter.WsClient<RedBot> {
                 if (selfId !== this.bot.selfId) {
                     return this.socket.close(1008, `invalid selfId: ${selfId}`)
                 }
-                const user = decodeFirendUser(await this.bot.internal.getSelfProfile())
-                Object.assign(this.bot, user)
+                this.bot.user = decodeFirendUser(await this.bot.internal.getSelfProfile())
                 return this.bot.online()
             }
 

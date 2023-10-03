@@ -1,5 +1,5 @@
 import { Friend, WsEvents, Message, Group } from './types'
-import { Universal, h, Session, Dict, Logger } from 'koishi'
+import { Universal, h, Dict } from 'koishi'
 import { RedBot } from './bot'
 import * as face from 'qface'
 import FileType from 'file-type'
@@ -10,6 +10,12 @@ export function genPack(type: string, payload: any) {
         payload
     })
 }
+
+export const decodeChannel = (guild: Group): Universal.Channel => ({
+    id: guild.groupCode,
+    name: guild.groupName,
+    type: Universal.Channel.Type.TEXT
+})
 
 export const decodeGuild = (guild: Group): Universal.Guild => ({
     id: guild.groupCode,
