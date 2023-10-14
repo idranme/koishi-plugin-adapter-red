@@ -70,7 +70,7 @@ export async function decodeMessage(
 ) {
     message.id = message.messageId = data.msgId
 
-    const parse = async (data: Message) => {
+    const parse = async (data: Message, noQuote = false) => {
         const result: h[] = []
         for (const v of data.elements) {
             if (v.elementType === 1) {
@@ -112,11 +112,12 @@ export async function decodeMessage(
                 ]))
             } else if (v.elementType === 7) {
                 // quote
+                if (noQuote) continue
                 const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
                 const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(data.peerUin + '/' + replayMsgSeq)
                 if (msgId) {
                     const record = data.records[0]
-                    const elements = await parse(record)
+                    const elements = await parse(record, true)
                     message.quote = {
                         id: msgId,
                         messageId: msgId,
