@@ -118,6 +118,7 @@ export async function decodeMessage(
                     const record = data.records[0]
                     const elements = await parse(record)
                     message.quote = {
+                        id: msgId,
                         messageId: msgId,
                         user: {
                             id: senderUid,
