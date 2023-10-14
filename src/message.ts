@@ -182,7 +182,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             contentType: mime ?? 'audio/amr'
         }
         const head = buffer.subarray(0, 7).toString()
-        let duration = 0
+        let duration = 1
         if (!head.includes('SILK')) {
             const tmpPath = await saveTmp(buffer)
             duration = await getDuration(tmpPath)
