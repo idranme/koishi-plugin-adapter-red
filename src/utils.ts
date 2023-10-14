@@ -30,6 +30,24 @@ export const decodeFirendUser = (user: Friend): Universal.User => ({
     username: user.nick
 })
 
+const roleMap = {
+    2: 'member',
+    3: 'admin',
+    4: 'owner'
+}
+
+export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
+    user: {
+        id: detail.uin,
+        name: detail.nick,
+        userId: detail.uin,
+        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${detail.uin}&spec=640`,
+        username: detail.nick,
+    },
+    name: detail.cardName || detail.nick,
+    roles: roleMap[detail.role] && [roleMap[detail.role]]
+})
+
 export const decodeUser = (data: Message): Universal.User => ({
     id: data.senderUin,
     name: data.sendNickName,
@@ -38,15 +56,10 @@ export const decodeUser = (data: Message): Universal.User => ({
     username: data.sendNickName,
 })
 
-const roleMap = {
-    2: 'member',
-    3: 'admin',
-    4: 'owner'
-}
-
-export const decodeGuildMember = (data: Message): Universal.GuildMember => ({
+export const decodeEventGuildMember = (data: Message): Universal.GuildMember => ({
     user: decodeUser(data),
     name: data.sendMemberName || data.sendNickName,
+    roles: data.roleType && roleMap[data.roleType] && [roleMap[data.roleType]]
 })
 
 export async function decodeMessage(
@@ -57,25 +70,25 @@ export async function decodeMessage(
 ) {
     message.id = message.messageId = data.msgId
 
-    const elements = []
-    if (data.elements) {
-        for await (const v of data.elements) {
+    const parse = async (data: Message) => {
+        const result: h[] = []
+        for (const v of data.elements) {
             if (v.elementType === 1) {
                 // text
                 const { atType, atUid, content, atNtUin } = v.textElement
                 if (atType === 1) {
-                    elements.push(h('at', {
+                    result.push(h('at', {
                         type: 'all'
                     }))
                     continue
                 }
                 if (atType === 2) {
-                    elements.push(h.at(atNtUin || atUid, {
+                    result.push(h.at(atNtUin || atUid, {
                         name: content.replace('@', '')
                     }))
                     continue
                 }
-                elements.push(h.text(v.textElement.content))
+                result.push(h.text(v.textElement.content))
             } else if (v.elementType === 2) {
                 // image
                 // picsubtype 为0是图片 为1是动画表情
@@ -83,18 +96,18 @@ export async function decodeMessage(
                 //const url = 'file:///' + v.picElement.sourcePath.replaceAll('\\', '/')
                 //elements.push(h.image(url))
                 const { mime } = await FileType.fromBuffer(file.data)
-                elements.push(h.image(file.data, mime))
+                result.push(h.image(file.data, mime))
             } else if (v.elementType === 4) {
                 // audio
                 const file = await getFile(bot, data, v.elementId)
                 //const url = 'file:///' + (v.pttElement as any).filePath.replaceAll('\\', '/')
                 //elements.push(h.audio(url))
-                elements.push(h.audio(file.data, 'application/octet-stream'))
+                result.push(h.audio(file.data, 'application/octet-stream'))
             } else if (v.elementType === 6) {
                 // face
                 const { faceText, faceIndex, faceType } = v.faceElement as Dict
                 const name = faceText ? faceText.slice(1) : face.get(faceIndex).QDes.slice(1)
-                elements.push(h('face', { id: faceIndex, name, platform: bot.platform, 'red:type': faceType }, [
+                result.push(h('face', { id: faceIndex, name, platform: bot.platform, 'red:type': faceType }, [
                     h.image(face.getUrl(faceIndex))
                 ]))
             } else if (v.elementType === 7) {
@@ -102,29 +115,36 @@ export async function decodeMessage(
                 const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
                 const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(data.peerUin + '/' + replayMsgSeq)
                 if (msgId) {
+                    const record = data.records[0]
+                    const elements = await parse(record)
                     message.quote = {
                         messageId: msgId,
                         user: {
-                            id: senderUid
+                            id: senderUid,
+                            name: record.sendMemberName || record.sendNickName
                         },
-                        content: ''
+                        content: elements.join(''),
+                        elements
                     }
                 } else {
                     //bot.logger.warn('由用户 %o (%o) 发送的消息的 quote 部分无法获取，请确保机器人保持运行状态。若无问题，可忽视此信息。', session.userId, session.author.name)
                 }
             }
         }
+        return result
     }
 
-    message.elements = elements
-    message.content = elements.join('')
+    message.elements = await parse(data)
+    message.content = message.elements.join('')
 
     if (!payload) return message
 
     const [guildId, channelId] = decodeGuildChannelId(data)
 
+    //console.log(data)
+
     payload.user = decodeUser(data)
-    payload.member = decodeGuildMember(data)
+    payload.member = decodeEventGuildMember(data)
     payload.timestamp = (data.msgTime as any) * 1000
     payload.guild = guildId && { id: guildId, name: data.peerName }
     payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT }
@@ -157,8 +177,6 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         if (input.payload.length === 0) return
 
         const data = input.payload[0]
-        //console.log(data)
-        //console.log(data.elements)
 
         bot.seqCache.set(data.peerUin + '/' + data.msgSeq, data.msgId)
 
