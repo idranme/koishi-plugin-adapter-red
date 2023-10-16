@@ -144,6 +144,7 @@ export async function decodeMessage(
     const [guildId, channelId] = decodeGuildChannelId(data)
 
     //console.log(data)
+    //console.log(data.elements)
 
     payload.user = decodeUser(data)
     payload.member = decodeEventGuildMember(data)

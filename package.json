@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
   "description": "Adapter for RedProtocol",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -33,7 +33,7 @@
   "dependencies": {
     "file-type": "^16.5.4",
     "form-data": "^4.0.0",
-    "node-silk-encode": "^1.1.0",
+    "node-silk-encode": "^1.1.2",
     "qface": "^1.4.1"
   },
   "koishi": {
