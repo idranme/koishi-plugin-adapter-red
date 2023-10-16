@@ -106,7 +106,9 @@ export async function decodeMessage(
                 // https://gchat.qpic.cn/url
                 // https://pic.ugcimg.cn/md5
                 const url = v.picElement.originImageUrl
-                if (url.includes('rkey')) {
+                if (!url) {
+                    result.push(h.image(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${v.picElement.md5HexStr.toUpperCase()}/0`))
+                } else if (url.includes('rkey')) {
                     const file = await getFile(bot, data, v.elementId)
                     const extension = v.picElement.sourcePath.split('.').at(-1)
                     result.push(h.image(file.data, mimes[extension] ?? 'application/octet-stream'))
