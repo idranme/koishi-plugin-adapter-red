@@ -132,6 +132,7 @@ export interface PicElement {
     emojiAd: EmojiAd;
     emojiMall: EmojiMall;
     emojiZplan: EmojiZplan;
+    originImageUrl: string;
 }
 
 export interface EmojiAd {

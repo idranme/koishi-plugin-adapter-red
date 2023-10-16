@@ -2,7 +2,6 @@ import { Friend, WsEvents, Message, Group } from './types'
 import { Universal, h, Dict } from 'koishi'
 import { RedBot } from './bot'
 import * as face from 'qface'
-import FileType from 'file-type'
 
 export function genPack(type: string, payload: any) {
     return JSON.stringify({
@@ -62,6 +61,14 @@ export const decodeEventGuildMember = (data: Message): Universal.GuildMember => 
     roles: data.roleType && roleMap[data.roleType] && [roleMap[data.roleType]]
 })
 
+const mimes = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'PNG': 'image/png',
+    'gif': 'image/gif'
+}
+
 export async function decodeMessage(
     bot: RedBot,
     data: Message,
@@ -92,11 +99,20 @@ export async function decodeMessage(
             } else if (v.elementType === 2) {
                 // image
                 // picsubtype 为0是图片 为1是动画表情
-                const file = await getFile(bot, data, v.elementId)
+
                 //const url = 'file:///' + v.picElement.sourcePath.replaceAll('\\', '/')
                 //elements.push(h.image(url))
-                const { mime } = await FileType.fromBuffer(file.data)
-                result.push(h.image(file.data, mime))
+
+                // https://gchat.qpic.cn/url
+                // https://pic.ugcimg.cn/md5
+                const url = v.picElement.originImageUrl
+                if (url.includes('rkey')) {
+                    const file = await getFile(bot, data, v.elementId)
+                    const extension = v.picElement.sourcePath.split('.').at(-1)
+                    result.push(h.image(file.data, mimes[extension] ?? 'application/octet-stream'))
+                } else {
+                    result.push(h.image(`https://c2cpicdw.qpic.cn${url}`))
+                }
             } else if (v.elementType === 4) {
                 // audio
                 const file = await getFile(bot, data, v.elementId)
