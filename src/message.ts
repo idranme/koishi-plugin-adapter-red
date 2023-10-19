@@ -107,31 +107,34 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
         let buffer = Buffer.from(data)
         let opt = {
-            filename,
+            filename: filename.replaceAll('\n', ''),
             contentType: mime ?? 'image/png'
         }
         const payload = new FormData()
         payload.append('file', buffer, opt)
-        const file = await this.bot.internal.uploadFile(payload)
+        const res = await this.bot.internal.uploadFile(payload)
 
         let picType = 1000
-        switch (file.imageInfo.type) {
+        switch (res.imageInfo.type) {
             case 'gif':
                 picType = 2000
                 break
             case 'png':
                 picType = 1001
                 break
+            case 'webp':
+                picType = 1002
+                break
         }
         this.elements.push({
             elementType: 2,
             picElement: {
-                md5HexStr: file.md5,
-                fileSize: file.fileSize,
-                fileName: basename(file.ntFilePath),
-                sourcePath: file.ntFilePath,
-                picHeight: file.imageInfo.height,
-                picWidth: file.imageInfo.width,
+                md5HexStr: res.md5,
+                fileSize: res.fileSize,
+                fileName: basename(res.ntFilePath),
+                sourcePath: res.ntFilePath,
+                picHeight: res.imageInfo.height,
+                picWidth: res.imageInfo.width,
                 picType,
             }
         } as any)
