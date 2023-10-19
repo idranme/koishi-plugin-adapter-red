@@ -53,6 +53,15 @@ export class RedBot extends Bot<RedBot.Config> {
         return { data: res.map(decodeGuildMember) }
     }
 
+    async getGuildMember(guildId: string, userId: string) {
+        const res = await this.internal.getMemberList({
+            group: guildId,
+            size: 3000
+        })
+        const member = res.find((element)=> element.detail.uin === userId)
+        return decodeGuildMember(member)
+    }
+
     async deleteMessage(channelId: string, messageId: string) {
         let peerUin = channelId
         let chatType = 2
@@ -101,11 +110,10 @@ export class RedBot extends Bot<RedBot.Config> {
             offsetMsgId: next,
             count: 100
         })
-        const data = await Promise.all(res.msgList.reverse().map((data: Message) => decodeMessage(this, data)))
+        const data = await Promise.all(res.msgList.map((data: Message) => decodeMessage(this, data)))
         return { data, next: data[0]?.id }
     }
 
-    /*
     async getMessage(channelId: string, messageId: string) {
         let peerUin = channelId
         let chatType = 2
@@ -122,9 +130,8 @@ export class RedBot extends Bot<RedBot.Config> {
             offsetMsgId: messageId,
             count: 1
         })
-        console.log(res)
         return await decodeMessage(this, res.msgList[0])
-    }*/
+    }
 
     async getLogin() {
         const data = await this.internal.getSelfProfile()
