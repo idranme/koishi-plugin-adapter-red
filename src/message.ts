@@ -152,7 +152,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         this.elements.push({
             elementType: 3,
             fileElement: {
-                fileName: res.filePath.split('-').at(-1),
+                fileName: filename,
                 filePath: res.filePath,
                 fileSize: String(res.fileSize),
                 thumbFileSize: 750,
@@ -281,16 +281,25 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             }
             case 'p': {
                 this.trim = true
-                const prev = this.elements[this.elements.length - 1]
-                if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
-                    if (!prev.textElement.content.endsWith('\n')) {
-                        prev.textElement.content += '\n'
+                const prev1 = this.elements.at(-1)
+                if (prev1?.elementType === 1 && prev1?.textElement.atType === 0) {
+                    if (!prev1.textElement.content.endsWith('\n')) {
+                        prev1.textElement.content += '\n'
                     }
                 } else {
                     this.text('\n')
                 }
                 await this.render(children)
-                this.text('\n')
+                const prev2 = this.elements.at(-1)
+                if (prev2?.elementType === 1 && prev2?.textElement.atType === 0) {
+                    if (!prev2.textElement.content.endsWith('\n')) {
+                        prev2.textElement.content += '\n'
+                    }
+                } else {
+                    this.text('\n')
+                }
+                const prev3 = this.elements.at(-1)
+                prev3.textElement.content += '\n'
                 break
             }
             case 'audio': {

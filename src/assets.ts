@@ -1,5 +1,5 @@
 import { writeFile, readFile } from 'fs/promises'
-import { createHash, randomUUID } from 'crypto'
+import { randomUUID } from 'crypto'
 import { resolve, join } from 'path'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
@@ -8,33 +8,6 @@ import { encode } from 'node-silk-encode'
 
 const TMP_DIR = tmpdir()
 export const NOOP = () => { }
-
-export async function uploadAudio(buffer: Buffer) {
-    const head = buffer.subarray(0, 7).toString()
-
-    let filePath: string
-    let duration = 0
-    if (!head.includes('SILK')) {
-        const tmpPath = await saveTmp(buffer)
-        duration = await getDuration(tmpPath)
-        const res = await audioTrans(tmpPath)
-        filePath = res.silkFile
-        buffer = await readFile(filePath)
-    } else {
-        filePath = await saveTmp(buffer)
-    }
-
-    const hash = createHash('md5')
-    hash.update(buffer.toString('binary'), 'binary')
-    const md5 = hash.digest('hex')
-
-    return {
-        md5,
-        fileSize: buffer.length,
-        filePath,
-        duration
-    }
-}
 
 interface transRet {
     silkFile: string
