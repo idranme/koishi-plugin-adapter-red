@@ -23,12 +23,12 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                     this.elements.splice(0, 1)
                 }
             }
-            const latest = this.elements[this.elements.length - 1]
-            if (latest?.elementType === 1 && latest?.textElement.atType === 0) {
-                if (latest.textElement.content === '\n') {
+            const last = this.elements.at(-1)
+            if (last?.elementType === 1 && last?.textElement.atType === 0) {
+                if (last.textElement.content === '\n') {
                     this.elements.splice(this.elements.length - 1, 1)
-                } else if (latest.textElement.content.endsWith('\n')) {
-                    latest.textElement.content = latest.textElement.content.slice(0, -2)
+                } else if (last.textElement.content.endsWith('\n')) {
+                    last.textElement.content = last.textElement.content.slice(0, -1)
                 }
             }
         }
@@ -298,8 +298,6 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 } else {
                     this.text('\n')
                 }
-                const prev3 = this.elements.at(-1)
-                prev3.textElement.content += '\n'
                 break
             }
             case 'audio': {
