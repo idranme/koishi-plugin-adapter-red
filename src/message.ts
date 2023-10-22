@@ -1,13 +1,13 @@
-import { Dict, h, MessageEncoder, noop } from 'koishi'
+import { Dict, h, MessageEncoder } from 'koishi'
 import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
-import { saveTmp, audioTrans, getDuration, NOOP } from './assets'
-import { unlink } from 'fs'
+import { saveTmp, audioTransPcm } from './assets'
 import { basename } from 'path'
-import { readFile } from 'fs/promises'
 import { decodeMessage } from './utils'
+import { encode, getDuration } from 'silk-wasm'
+import { } from 'koishi-plugin-ffmpeg'
 
 export class RedMessageEncoder extends MessageEncoder<RedBot> {
     elements: Element[] = []
@@ -184,17 +184,22 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
             filename,
             contentType: mime ?? 'audio/amr'
         }
+
         const head = buffer.subarray(0, 7).toString()
-        let duration = 1
         if (!head.includes('SILK')) {
-            const tmpPath = await saveTmp(buffer)
-            duration = await getDuration(tmpPath)
-            const res = await audioTrans(tmpPath)
-            buffer = await readFile(res.silkFile)
-            unlink(res.silkFile, NOOP)
-            opt.filename = basename(res.silkFile)
+            let pcm: Buffer
+            const { ffmpeg } = this.bot.ctx
+            if (ffmpeg) {
+                pcm = await ffmpeg.builder().input(buffer).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
+            } else {
+                const tmpPath = await saveTmp(buffer)
+                pcm = await audioTransPcm(tmpPath)
+            }
+            buffer = await encode(pcm, 24000)
             opt.contentType = 'audio/amr'
         }
+        const duration = Math.round(getDuration(buffer) / 1000)
+
         const payload = new FormData()
         payload.append('file', buffer, opt)
         const file = await this.bot.internal.uploadFile(payload)

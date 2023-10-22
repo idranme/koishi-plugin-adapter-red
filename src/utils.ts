@@ -58,7 +58,7 @@ export const decodeUser = (data: Message): Universal.User => ({
 export const decodeEventGuildMember = (data: Message): Universal.GuildMember => ({
     user: decodeUser(data),
     name: data.sendMemberName || data.sendNickName,
-    roles: data.roleType && roleMap[data.roleType] && [roleMap[data.roleType]]
+    roles: roleMap[data.roleType] && [roleMap[data.roleType]]
 })
 
 const mimes = {
@@ -73,7 +73,7 @@ export async function decodeMessage(
     bot: RedBot,
     data: Message,
     message: Universal.Message = {},
-    payload?: Universal.MessageLike
+    payload: Universal.MessageLike = message
 ) {
     message.id = message.messageId = data.msgId
 
@@ -170,6 +170,8 @@ export async function decodeMessage(
     payload.timestamp = (data.msgTime as any) * 1000
     payload.guild = guildId && { id: guildId, name: data.peerName }
     payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT }
+
+    return message
 }
 
 const decodeGuildChannelId = (data: Message) => {
