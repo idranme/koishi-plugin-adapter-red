@@ -210,7 +210,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             elementType: 4,
             pttElement: {
                 md5HexStr: file.md5,
-                fileSize: file.fileSize,
+                fileSize: String(file.fileSize),
                 fileName: basename(file.ntFilePath),
                 filePath: file.ntFilePath,
                 waveAmplitudes: [
