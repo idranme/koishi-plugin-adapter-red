@@ -1,9 +1,9 @@
-import { Adapter, Schema } from 'koishi'
+import { Adapter, Schema, Context } from 'koishi'
 import { RedBot } from './bot'
 import { genPack, decodeUser, adaptSession, decodeFirendUser } from './utils'
 import { WsEvents } from './types'
 
-export class WsClient extends Adapter.WsClient<RedBot> {
+export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, RedBot<C>> {
     async prepare() {
         const { host } = new URL(this.bot.config.endpoint)
         this.bot.selfId = this.bot.config.selfId

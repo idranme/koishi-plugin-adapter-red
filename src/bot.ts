@@ -3,16 +3,18 @@ import { WsClient } from './ws'
 import { Internal, Message } from './types'
 import { RedMessageEncoder } from './message'
 import { decodeGuildMember, decodeGuild, decodeFirendUser, decodeMessage, decodeChannel } from './utils'
+import { RedAssetsLocal } from './assets'
 
-export class RedBot extends Bot<RedBot.Config> {
+export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
     http: Quester
     logger: Logger
     declare internal: Internal
     redImplName: string
     seqCache = new Map()
+    redAssetsLocal: RedAssetsLocal
 
-    constructor(ctx: Context, config: RedBot.Config) {
+    constructor(ctx: C, config: RedBot.Config) {
         super(ctx, config)
         this.http = ctx.http.extend({
             ...config,
@@ -25,6 +27,7 @@ export class RedBot extends Bot<RedBot.Config> {
         this.internal = new Internal(this.http)
         this.platform = 'red'
         this.logger = ctx.logger('red')
+        this.redAssetsLocal = new RedAssetsLocal(this, config)
         ctx.plugin(WsClient, this)
     }
 
@@ -58,7 +61,7 @@ export class RedBot extends Bot<RedBot.Config> {
             group: guildId,
             size: 3000
         })
-        const member = res.find((element)=> element.detail.uin === userId)
+        const member = res.find((element) => element.detail.uin === userId)
         return decodeGuildMember(member)
     }
 
@@ -150,6 +153,8 @@ export namespace RedBot {
     export interface Config extends Quester.Config, WsClient.Config {
         token: string
         selfId: string
+        path: string
+        selfUrl: string
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -157,6 +162,10 @@ export namespace RedBot {
             token: Schema.string().description('用户令牌。').role('secret').required(),
             selfId: Schema.string().description('机器人的账号。').required(),
         }),
+        Schema.object({
+            path: Schema.string().default('/red_assets').description('静态资源（如图片）暴露在服务器的路径。'),
+            selfUrl: Schema.string().role('link').description('Koishi 服务暴露在公网的地址。缺省时将使用全局配置。')
+        }).description('资源设置'),
         WsClient.Config,
         Quester.createConfig('http://127.0.0.1:16530'),
     ])

@@ -23,10 +23,8 @@ export const decodeGuild = (guild: Group): Universal.Guild => ({
 
 export const decodeFirendUser = (user: Friend): Universal.User => ({
     id: user.uin,
-    name: user.nick,
-    userId: user.uin,
+    nick: user.nick,
     avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
-    username: user.nick
 })
 
 const roleMap = {
@@ -36,37 +34,28 @@ const roleMap = {
 }
 
 export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
-    user: {
-        id: detail.uin,
-        name: detail.nick,
-        userId: detail.uin,
-        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${detail.uin}&spec=640`,
-        username: detail.nick,
-    },
-    name: detail.cardName || detail.nick,
+    user: decodeFirendUser(detail),
+    nick: detail.cardName || detail.nick,
     roles: roleMap[detail.role] && [roleMap[detail.role]]
 })
 
 export const decodeUser = (data: Message): Universal.User => ({
     id: data.senderUin,
-    name: data.sendNickName,
-    userId: data.senderUin,
+    nick: data.sendNickName,
     avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${data.senderUin}&spec=640`,
-    username: data.sendNickName,
 })
 
 export const decodeEventGuildMember = (data: Message): Universal.GuildMember => ({
     user: decodeUser(data),
-    name: data.sendMemberName || data.sendNickName,
+    nick: data.sendMemberName || data.sendNickName,
     roles: roleMap[data.roleType] && [roleMap[data.roleType]]
 })
 
-const mimes = {
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'PNG': 'image/png',
-    'gif': 'image/gif'
+const mimeMap = {
+    1000: 'image/jpeg',
+    1001: 'image/png',
+    1002: 'image/webp',
+    2000: 'image/gif',
 }
 
 export async function decodeMessage(
@@ -75,80 +64,81 @@ export async function decodeMessage(
     message: Universal.Message = {},
     payload: Universal.MessageLike = message
 ) {
-    message.id = message.messageId = data.msgId
+    message.id = data.msgId
+
+    bot.redAssetsLocal.start()
 
     const parse = async (data: Message, noQuote = false) => {
         const result: h[] = []
         for (const v of data.elements) {
-            if (v.elementType === 1) {
-                // text
-                const { atType, atUid, content, atNtUin } = v.textElement
-                if (atType === 1) {
-                    result.push(h('at', {
-                        type: 'all'
-                    }))
-                    continue
-                }
-                if (atType === 2) {
-                    result.push(h.at(atNtUin || atUid, {
-                        name: content.replace('@', '')
-                    }))
-                    continue
-                }
-                result.push(h.text(v.textElement.content))
-            } else if (v.elementType === 2) {
-                // image
-                // picsubtype 为0是图片 为1是动画表情
-
-                //const url = 'file:///' + v.picElement.sourcePath.replaceAll('\\', '/')
-                //elements.push(h.image(url))
-
-                // https://gchat.qpic.cn/url
-                // https://pic.ugcimg.cn/md5
-                //console.log(v.picElement)
-                const url = v.picElement.originImageUrl
-                if (!url) {
-                    result.push(h.image(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${v.picElement.md5HexStr.toUpperCase()}/0`))
-                } else if (url.includes('&rkey')) {
-                    const file = await getFile(bot, data, v.elementId)
-                    const extension = v.picElement.sourcePath.split('.').at(-1)
-                    result.push(h.image(file.data, mimes[extension] ?? 'application/octet-stream'))
-                } else {
-                    result.push(h.image(`https://c2cpicdw.qpic.cn${url}`))
-                }
-            } else if (v.elementType === 4) {
-                // audio
-                const file = await getFile(bot, data, v.elementId)
-                //const url = 'file:///' + (v.pttElement as any).filePath.replaceAll('\\', '/')
-                //elements.push(h.audio(url))
-                result.push(h.audio(file.data, 'application/octet-stream'))
-            } else if (v.elementType === 6) {
-                // face
-                const { faceText, faceIndex, faceType } = v.faceElement as Dict
-                const name = faceText ? faceText.slice(1) : face.get(faceIndex).QDes.slice(1)
-                result.push(h('face', { id: faceIndex, name, platform: bot.platform, 'red:type': faceType }, [
-                    h.image(face.getUrl(faceIndex))
-                ]))
-            } else if (v.elementType === 7) {
-                // quote
-                if (noQuote) continue
-                const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
-                const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(data.peerUin + '/' + replayMsgSeq)
-                if (msgId) {
-                    const record = data.records[0]
-                    const elements = await parse(record, true)
-                    message.quote = {
-                        id: msgId,
-                        messageId: msgId,
-                        user: {
-                            id: senderUid,
-                            name: record.sendMemberName || record.sendNickName
-                        },
-                        content: elements.join(''),
-                        elements
+            switch (v.elementType) {
+                case 1: {
+                    const { atType, atUid, content, atNtUin } = v.textElement
+                    if (atType === 1) {
+                        result.push(h('at', {
+                            type: 'all'
+                        }))
+                        continue
                     }
-                } else {
-                    //bot.logger.warn('由用户 %o (%o) 发送的消息的 quote 部分无法获取，请确保机器人保持运行状态。若无问题，可忽视此信息。', session.userId, session.author.name)
+                    if (atType === 2) {
+                        result.push(h.at(atNtUin || atUid, {
+                            name: content.replace('@', '')
+                        }))
+                        continue
+                    }
+                    result.push(h.text(v.textElement.content))
+                    break
+                }
+                case 2: {
+                    const url = v.picElement.originImageUrl
+                    const mime = mimeMap[v.picElement.picType] ?? 'application/octet-stream'
+                    if (!url) {
+                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime)))
+                    } else if (url.includes('&rkey')) {
+                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime)))
+                    } else {
+                        result.push(h.image(`https://c2cpicdw.qpic.cn${url}`))
+                    }
+                    break
+                }
+                case 3: {
+                    //const file = await getFile(bot, data, v.elementId)
+                    //result.push(h.file(file.data, file.headers['content-type']))
+                    break
+                }
+                case 4: {
+                    result.push(h.audio(bot.redAssetsLocal.set(data, v.elementId)))
+                    break
+                }
+                case 6: {
+                    const { faceText, faceIndex, faceType } = v.faceElement as Dict
+                    const name = faceText ? faceText.slice(1) : face.get(faceIndex).QDes.slice(1)
+                    result.push(h('face', { id: faceIndex, name, platform: bot.platform, 'red:type': faceType }, [
+                        h.image(face.getUrl(faceIndex))
+                    ]))
+                    break
+                }
+                case 7: {
+                    if (noQuote) continue
+                    const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
+                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(data.peerUin + '/' + replayMsgSeq)
+                    if (msgId) {
+                        const record = data.records[0]
+                        const elements = await parse(record, true)
+                        message.quote = {
+                            id: msgId,
+                            messageId: msgId,
+                            user: {
+                                id: senderUid,
+                                name: record.sendMemberName || record.sendNickName
+                            },
+                            content: elements.join(''),
+                            elements
+                        }
+                    } else {
+                        //bot.logger.warn('由用户 %o (%o) 发送的消息的 quote 部分无法获取，请确保机器人保持运行状态。若无问题，可忽视此信息。', session.userId, session.author.name)
+                    }
+                    break
                 }
             }
         }
@@ -168,8 +158,8 @@ export async function decodeMessage(
     payload.user = decodeUser(data)
     payload.member = decodeEventGuildMember(data)
     payload.timestamp = (data.msgTime as any) * 1000
-    payload.guild = guildId && { id: guildId, name: data.peerName }
-    payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT }
+    payload.guild = guildId && { id: guildId, name: data.peerName, avatar: `https://p.qlogo.cn/gh/${data.peerUid}/${data.peerUid}/640` }
+    payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT, name: data.peerName }
 
     return message
 }
@@ -206,6 +196,7 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
 
         switch (data.msgType) {
             case 2:
+            case 3:
             case 6:
             case 8:
             case 9: {
@@ -228,16 +219,6 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         }
 
         switch (data.msgType) {
-            case 3: {
-                session.type = 'guild-file-added'
-                /*const element = meta.elements[0]
-                const file = await getFile(bot, meta, element.elementId)
-                const { mime } = await FileType.fromBuffer(file.data)
-                session.elements = [h.file(file.data, mime)]
-                session.content = session.elements.join('')
-                console.log(mime)*/
-                break
-            }
             case 5: {
                 if (data.subMsgType === 8) {
                     const groupElement = data.elements[0].grayTipElement.groupElement as any

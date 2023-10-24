@@ -1,4 +1,4 @@
-import { Dict, h, MessageEncoder } from 'koishi'
+import { Dict, h, MessageEncoder, Context } from 'koishi'
 import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
@@ -9,7 +9,7 @@ import { decodeMessage } from './utils'
 import { encode, getDuration } from 'silk-wasm'
 import { } from 'koishi-plugin-ffmpeg'
 
-export class RedMessageEncoder extends MessageEncoder<RedBot> {
+export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
     elements: Element[] = []
     trim = false
 
@@ -126,6 +126,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 picType = 1002
                 break
         }
+
         this.elements.push({
             elementType: 2,
             picElement: {
@@ -186,7 +187,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
         }
 
         const head = buffer.subarray(0, 7).toString()
-        if (!head.includes('SILK')) {
+        if (!head.includes('\x02#!SILK')) {
             let pcm: Buffer
             const { ffmpeg } = this.bot.ctx
             if (ffmpeg) {
@@ -196,6 +197,7 @@ export class RedMessageEncoder extends MessageEncoder<RedBot> {
                 pcm = await audioTransPcm(tmpPath)
             }
             buffer = await encode(pcm, 24000)
+            opt.filename = 'file.amr'
             opt.contentType = 'audio/amr'
         }
         const duration = Math.round(getDuration(buffer) / 1000)
