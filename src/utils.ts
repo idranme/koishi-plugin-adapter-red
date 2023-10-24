@@ -23,7 +23,7 @@ export const decodeGuild = (guild: Group): Universal.Guild => ({
 
 export const decodeFirendUser = (user: Friend): Universal.User => ({
     id: user.uin,
-    nick: user.nick,
+    name: user.nick,
     avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
 })
 
@@ -41,7 +41,7 @@ export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
 
 export const decodeUser = (data: Message): Universal.User => ({
     id: data.senderUin,
-    nick: data.sendNickName,
+    name: data.sendNickName,
     avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${data.senderUin}&spec=640`,
 })
 
