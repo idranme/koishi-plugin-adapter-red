@@ -216,7 +216,8 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 waveAmplitudes: [
                     99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
                 ],
-                duration: duration
+                duration: duration,
+                formatType: 1,
             }
         } as any)
     }
