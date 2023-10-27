@@ -3,7 +3,7 @@ import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
-import { saveTmp, audioTransPcm } from './assets'
+import { audioTransPcm } from './audio'
 import { basename } from 'path'
 import { decodeMessage } from './utils'
 import { encode, getDuration } from 'silk-wasm'
@@ -105,13 +105,12 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private async image(attrs: Dict) {
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
-        let buffer = Buffer.from(data)
         let opt = {
             filename: filename.replaceAll('\n', ''),
             contentType: mime ?? 'image/png'
         }
         const payload = new FormData()
-        payload.append('file', buffer, opt)
+        payload.append('file', data, opt)
         const res = await this.bot.internal.uploadFile(payload)
 
         let picType = 1000
@@ -180,30 +179,29 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private async audio(attrs: Dict) {
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
-        let buffer = Buffer.from(data)
+        let voice = Buffer.from(data)
         let opt = {
             filename,
             contentType: mime ?? 'audio/amr'
         }
 
-        const head = buffer.subarray(0, 7).toString()
+        const head = voice.subarray(0, 7)
         if (!head.includes('\x02#!SILK')) {
             let pcm: Buffer
             const { ffmpeg } = this.bot.ctx
             if (ffmpeg) {
-                pcm = await ffmpeg.builder().input(buffer).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
+                pcm = await ffmpeg.builder().input(voice).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
             } else {
-                const tmpPath = await saveTmp(buffer)
-                pcm = await audioTransPcm(tmpPath)
+                pcm = await audioTransPcm(voice)
             }
-            buffer = await encode(pcm, 24000)
+            voice = Buffer.from(await encode(pcm, 24000))
             opt.filename = 'file.amr'
             opt.contentType = 'audio/amr'
         }
-        const duration = Math.round(getDuration(buffer) / 1000)
+        const duration = Math.round(getDuration(voice) / 1000)
 
         const payload = new FormData()
-        payload.append('file', buffer, opt)
+        payload.append('file', voice, opt)
         const file = await this.bot.internal.uploadFile(payload)
 
         this.elements.push({
@@ -216,7 +214,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 waveAmplitudes: [
                     99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
                 ],
-                duration: duration,
+                duration,
                 formatType: 1,
             }
         } as any)
