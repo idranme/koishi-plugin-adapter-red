@@ -110,7 +110,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             contentType: mime ?? 'image/png'
         }
         const payload = new FormData()
-        payload.append('file', data, opt)
+        payload.append('file', Buffer.from(data), opt)
         const res = await this.bot.internal.uploadFile(payload)
 
         let picType = 1000
@@ -143,7 +143,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     private async file(attrs: Dict) {
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
         const form = new FormData()
-        form.append('file', data, {
+        form.append('file', Buffer.from(data), {
             filename,
             contentType: mime ?? 'application/octet-stream'
         })
