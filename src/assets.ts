@@ -37,8 +37,7 @@ export class RedAssetsLocal<C extends Context = Context> {
             this.selfUrl = trimSlash(this.config.selfUrl)
         } else {
             if (!this.bot.ctx.router.port) return false
-            // @ts-ignore
-            this.selfUrl = this.bot.ctx.root.selfUrl || `http://127.0.0.1:${this.bot.ctx.router.port}`
+            this.selfUrl = this.bot.ctx.router.selfUrl || `http://127.0.0.1:${this.bot.ctx.router.port}`
         }
         this.bot.ctx.router.get(this.path, async (ctx) => {
             ctx.body = '200 OK'

@@ -7,6 +7,10 @@ import { RedAssetsLocal } from './assets'
 
 export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
+    static inject = {
+        required: ['router'],
+        optional: ['ffmpeg']
+    }
     http: Quester
     logger: Logger
     declare internal: Internal
@@ -28,6 +32,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         this.platform = 'red'
         this.logger = ctx.logger('red')
         this.redAssetsLocal = new RedAssetsLocal(this, config)
+        this.redAssetsLocal.start()
         ctx.plugin(WsClient, this)
     }
 

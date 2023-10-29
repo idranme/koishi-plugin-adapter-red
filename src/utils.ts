@@ -66,8 +66,6 @@ export async function decodeMessage(
 ) {
     message.id = data.msgId
 
-    bot.redAssetsLocal.start()
-
     const parse = async (data: Message, noQuote = false) => {
         const result: h[] = []
         for (const v of data.elements) {
@@ -254,41 +252,4 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         return
     }
     return session
-}
-
-export class Blob {
-    private _buffer: Buffer;
-    public size: number;
-    public type: string;
-
-    constructor(array: Uint8Array[], options?: { type?: string }) {
-        const type = options?.type ?? '';
-        this._buffer = Buffer.concat(array);
-        this.size = this._buffer.length;
-        this.type = type;
-    }
-
-    public arrayBuffer(): Promise<ArrayBuffer> {
-        return Promise.resolve(this._buffer.buffer);
-    }
-
-    public text(): Promise<string> {
-        return Promise.resolve(this._buffer.toString());
-    }
-
-    public slice(start?: number, end?: number, contentType?: string): Blob {
-        const slicedBuffer = this._buffer.slice(start, end);
-        const blob = new Blob([], { type: contentType });
-        blob._buffer = slicedBuffer;
-        blob.size = slicedBuffer.length;
-        return blob;
-    }
-
-    public stream(): NodeJS.ReadableStream {
-        const { Readable } = require('stream');
-        const stream = new Readable();
-        stream.push(this._buffer);
-        stream.push(null);
-        return stream;
-    }
 }

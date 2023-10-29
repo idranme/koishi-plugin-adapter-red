@@ -3,10 +3,11 @@ import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
-import { audioTransPcm } from './audio'
+import { audioTransPcm, wavToPcm } from './audio'
 import { basename } from 'path'
 import { decodeMessage } from './utils'
 import { encode, getDuration } from 'silk-wasm'
+import { isWavFile } from 'wav-file-decoder'
 import { } from 'koishi-plugin-ffmpeg'
 
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
@@ -178,15 +179,14 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async audio(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
         let voice = Buffer.from(data)
-        let opt = {
-            filename,
-            contentType: mime ?? 'audio/amr'
-        }
 
         const head = voice.subarray(0, 7)
-        if (!head.includes('\x02#!SILK')) {
+        if (isWavFile(voice)) {
+            const pcm = wavToPcm(voice)
+            voice = Buffer.from(await encode(pcm.data, pcm.sampleRate))
+        } else if (!head.includes('\x02#!SILK')) {
             let pcm: Buffer
             const { ffmpeg } = this.bot.ctx
             if (ffmpeg) {
@@ -195,13 +195,14 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 pcm = await audioTransPcm(voice)
             }
             voice = Buffer.from(await encode(pcm, 24000))
-            opt.filename = 'file.amr'
-            opt.contentType = 'audio/amr'
         }
         const duration = Math.round(getDuration(voice) / 1000)
 
         const payload = new FormData()
-        payload.append('file', voice, opt)
+        payload.append('file', voice, {
+            filename: 'file.amr',
+            contentType: 'audio/amr'
+        })
         const file = await this.bot.internal.uploadFile(payload)
 
         this.elements.push({
