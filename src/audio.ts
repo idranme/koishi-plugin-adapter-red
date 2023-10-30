@@ -100,7 +100,7 @@ console.log(floatToSignedInt16(1)); // 输出32767
 console.log(floatToSignedInt16(-1)); // 输出-32768
 */
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 export function isWavFile(fileData: ArrayBufferView | ArrayBuffer): boolean {
     try {
@@ -116,7 +116,7 @@ export function isWavFile(fileData: ArrayBufferView | ArrayBuffer): boolean {
     }
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 const enum AudioEncoding {
     pcmInt,                                                 // PCM integer
@@ -131,7 +131,7 @@ const enum WavFileType {
 }
 const wavFileTypeAudioEncodings = [AudioEncoding.pcmInt, AudioEncoding.pcmInt, AudioEncoding.pcmInt, AudioEncoding.pcmFloat];
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 interface AudioData {
     channelData: Float32Array[];               // arrays containing the audio samples (PCM data), one array per channel
@@ -142,7 +142,7 @@ interface AudioData {
     wavFileTypeName: string;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function decodeWavFile(fileData: ArrayBufferView | ArrayBuffer): AudioData {
     const chunks = unpackWavFileChunks(fileData);
@@ -157,7 +157,7 @@ function decodeWavFile(fileData: ArrayBufferView | ArrayBuffer): AudioData {
     return { channelData, sampleRate: fmt.sampleRate, numberOfChannels: fmt.numberOfChannels, audioEncoding, bitsPerSample: fmt.bitsPerSample, wavFileTypeName };
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function unpackWavFileChunks(fileData: ArrayBufferView | ArrayBuffer): Map<string, DataView> {
     let dataView: DataView;
@@ -200,14 +200,14 @@ function unpackWavFileChunks(fileData: ArrayBufferView | ArrayBuffer): Map<strin
     return chunks;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function getString(dataView: DataView, offset: number, length: number): string {
     const a = new Uint8Array(dataView.buffer, dataView.byteOffset + offset, length);
     return <string>String.fromCharCode.apply(null, a);
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function getInt24(dataView: DataView, offset: number): number {
     const b0 = dataView.getInt8(offset + 2) * 0x10000;
@@ -215,7 +215,7 @@ function getInt24(dataView: DataView, offset: number): number {
     return b0 + b12;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 interface FormatChunk {
     formatCode: number;                       // 1 = WAVE_FORMAT_PCM, 3 = WAVE_FORMAT_IEEE_FLOA
@@ -226,7 +226,7 @@ interface FormatChunk {
     bitsPerSample: number;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function decodeFormatChunk(dataView?: DataView): FormatChunk {
     if (!dataView) {
@@ -245,7 +245,7 @@ function decodeFormatChunk(dataView?: DataView): FormatChunk {
     return fmt;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function getWavFileType(fmt: FormatChunk): WavFileType {
     if (fmt.numberOfChannels < 1 || fmt.numberOfChannels > 999) {
@@ -268,7 +268,7 @@ function getWavFileType(fmt: FormatChunk): WavFileType {
     throw new Error(`Unsupported WAV file type, formatCode=${fmt.formatCode}, bitsPerSample=${fmt.bitsPerSample}, bytesPerFrame=${fmt.bytesPerFrame}, numberOfChannels=${fmt.numberOfChannels}.`);
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function decodeDataChunk(data: DataView, fmt: FormatChunk, wavFileType: WavFileType): Float32Array[] {
     switch (wavFileType) {
@@ -280,7 +280,7 @@ function decodeDataChunk(data: DataView, fmt: FormatChunk, wavFileType: WavFileT
     }
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function decodeDataChunk_int16(data: DataView, fmt: FormatChunk): Float32Array[] {
     const channelData = allocateChannelDataArrays(data.byteLength, fmt);
@@ -298,7 +298,7 @@ function decodeDataChunk_int16(data: DataView, fmt: FormatChunk): Float32Array[]
     return channelData;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function decodeDataChunk_uint8(data: DataView, fmt: FormatChunk): Float32Array[] {
     const channelData = allocateChannelDataArrays(data.byteLength, fmt);
@@ -316,7 +316,7 @@ function decodeDataChunk_uint8(data: DataView, fmt: FormatChunk): Float32Array[]
     return channelData;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function decodeDataChunk_int24(data: DataView, fmt: FormatChunk): Float32Array[] {
     const channelData = allocateChannelDataArrays(data.byteLength, fmt);
@@ -334,7 +334,7 @@ function decodeDataChunk_int24(data: DataView, fmt: FormatChunk): Float32Array[]
     return channelData;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function decodeDataChunk_float32(data: DataView, fmt: FormatChunk): Float32Array[] {
     const channelData = allocateChannelDataArrays(data.byteLength, fmt);
@@ -351,7 +351,7 @@ function decodeDataChunk_float32(data: DataView, fmt: FormatChunk): Float32Array
     return channelData;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function allocateChannelDataArrays(dataLength: number, fmt: FormatChunk): Float32Array[] {
     const numberOfFrames = Math.floor(dataLength / fmt.bytesPerFrame);
@@ -362,7 +362,7 @@ function allocateChannelDataArrays(dataLength: number, fmt: FormatChunk): Float3
     return channelData;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function verifyDataChunkLength(data: DataView | undefined, fmt: FormatChunk) {
     if (!data) {
@@ -373,14 +373,14 @@ function verifyDataChunkLength(data: DataView | undefined, fmt: FormatChunk) {
     }
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 interface WavFileInfo {
     chunkInfo: ChunkInfoEntry[];
     fmt: FormatChunk;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 interface ChunkInfoEntry {
     chunkId: string;                       // "fmt", "data", etc.
@@ -388,7 +388,7 @@ interface ChunkInfoEntry {
     dataLength: number;
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function getWavFileInfo(fileData: ArrayBufferView | ArrayBuffer): WavFileInfo {
     const chunks = unpackWavFileChunks(fileData);
@@ -397,7 +397,7 @@ function getWavFileInfo(fileData: ArrayBufferView | ArrayBuffer): WavFileInfo {
     return { chunkInfo, fmt };
 }
 
-// forked form https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
+// forked from https://github.com/chdh/wav-file-decoder/blob/main/src/WavFileDecoder.ts
 // MIT license
 function getChunkInfo(chunks: Map<string, DataView>): ChunkInfoEntry[] {
     const chunkInfo: ChunkInfoEntry[] = [];
