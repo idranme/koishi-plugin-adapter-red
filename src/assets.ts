@@ -4,8 +4,6 @@ import { Message } from './types'
 
 export class RedAssetsLocal<C extends Context = Context> {
     private path: string
-    private selfUrl: string
-    private running = false
     constructor(private bot: RedBot<C>, private config: RedBot.Config) {
     }
     set(message: Message, elementId: string, mime?: string) {
@@ -30,15 +28,14 @@ export class RedAssetsLocal<C extends Context = Context> {
             responseType: 'arraybuffer'
         })
     }
-    start() {
-        if (this.running) return false
-        this.path = sanitize(this.config.path || '/files')
+    get selfUrl() {
         if (this.config.selfUrl) {
-            this.selfUrl = trimSlash(this.config.selfUrl)
-        } else {
-            if (!this.bot.ctx.router.port) return false
-            this.selfUrl = this.bot.ctx.router.selfUrl || `http://127.0.0.1:${this.bot.ctx.router.port}`
+            return trimSlash(this.config.selfUrl)
         }
+        return this.bot.ctx.router.selfUrl || `http://127.0.0.1:${this.bot.ctx.router.port}`
+    }
+    start() {
+        this.path = sanitize(this.config.path || '/files')
         this.bot.ctx.router.get(this.path, async (ctx) => {
             ctx.body = '200 OK'
             ctx.status = 200
@@ -50,6 +47,5 @@ export class RedAssetsLocal<C extends Context = Context> {
             ctx.header['date'] = response.headers['date']
             ctx.status = response.status
         })
-        this.running = true
     }
 }

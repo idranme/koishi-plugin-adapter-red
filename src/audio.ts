@@ -121,7 +121,7 @@ export function isWavFile(fileData: ArrayBufferView | ArrayBuffer): boolean {
 const enum AudioEncoding {
     pcmInt,                                                 // PCM integer
     pcmFloat
-}                                              // PCM float
+}
 const audioEncodingNames = ["int", "float"];
 const enum WavFileType {
     uint8,                                                  // 1-8 bit unsigned integer

@@ -9,6 +9,13 @@ import { decodeMessage } from './utils'
 import { encode, getDuration } from 'silk-wasm'
 import { } from 'koishi-plugin-ffmpeg'
 
+const extMap = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+}
+
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
     elements: Element[] = []
     trim = false
@@ -104,13 +111,12 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async image(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
-        let opt = {
-            filename: filename.replaceAll('\n', ''),
-            contentType: mime ?? 'image/png'
-        }
+        const { data, mime } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
         const payload = new FormData()
-        payload.append('file', Buffer.from(data), opt)
+        payload.append('file', Buffer.from(data), {
+            filename: 'file' + extMap[mime] ?? '',
+            contentType: mime ?? 'application/octet-stream'
+        })
         const res = await this.bot.internal.uploadFile(payload)
 
         let picType = 1000
