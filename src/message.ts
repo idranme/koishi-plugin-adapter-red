@@ -3,11 +3,10 @@ import { RedBot } from './bot'
 import { Element } from './types'
 import FormData from 'form-data'
 import * as face from 'qface'
-import { audioTransPcm, wavToPcm } from './audio'
+import { audioTransPcm, wavToPcm, isWavFile } from './audio'
 import { basename } from 'path'
 import { decodeMessage } from './utils'
 import { encode, getDuration } from 'silk-wasm'
-import { isWavFile } from 'wav-file-decoder'
 import { } from 'koishi-plugin-ffmpeg'
 
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
