@@ -89,11 +89,22 @@ export async function decodeMessage(
                 }
                 case 2: {
                     const url = v.picElement.originImageUrl
-                    const mime = mimeMap[v.picElement.picType] ?? 'application/octet-stream'
+                    let mime = mimeMap[v.picElement.picType]
+                    if (!mime) {
+                        const ext = v.picElement.fileName.split('.').at(-1)
+                        switch (ext) {
+                            case 'jpg':
+                                mime = 'image/jpeg'
+                                break
+                            default:
+                                mime = 'application/octet-stream'
+                                break
+                        }
+                    }
                     if (!url) {
-                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime)))
+                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime, v.picElement.md5HexStr)))
                     } else if (url.includes('&rkey')) {
-                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime)))
+                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime, v.picElement.md5HexStr)))
                     } else {
                         result.push(h.image(`https://c2cpicdw.qpic.cn${url}`))
                     }
@@ -105,7 +116,7 @@ export async function decodeMessage(
                     break
                 }
                 case 4: {
-                    result.push(h.audio(bot.redAssetsLocal.set(data, v.elementId)))
+                    result.push(h.audio(bot.redAssetsLocal.set(data, v.elementId, 'audio/amr', (v.pttElement as any).md5HexStr)))
                     break
                 }
                 case 6: {
