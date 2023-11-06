@@ -240,7 +240,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         let buffer = Buffer.from(data)
         let opt = {
             filename,
-            contentType: mime ?? 'video/mp4'
+            contentType: mime ?? 'application/octet-stream'
         }
         const payload = new FormData()
         payload.append('file', buffer, opt)

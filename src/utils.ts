@@ -130,13 +130,12 @@ export async function decodeMessage(
                 case 7: {
                     if (noQuote) continue
                     const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
-                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(data.peerUin + '/' + replayMsgSeq)
+                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
                     if (msgId) {
                         const record = data.records[0]
                         const elements = await parse(record, true)
                         message.quote = {
                             id: msgId,
-                            messageId: msgId,
                             user: {
                                 id: senderUid,
                                 name: record.sendMemberName || record.sendNickName
@@ -201,7 +200,7 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
 
         const data = input.payload[0]
 
-        bot.seqCache.set(data.peerUin + '/' + data.msgSeq, data.msgId)
+        bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
 
         switch (data.msgType) {
             case 2:
