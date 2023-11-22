@@ -198,21 +198,21 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
             case 8:
             case 9: {
                 session.type = 'message'
-                session.subtype = data.chatType === 1 || data.chatType === 100 ? 'private' : 'group'
+                session.subtype = data.chatType === 2 ? 'group' : 'private'
                 await decodeMessage(bot, data, session.event.message = {}, session.event)
                 if (!session.content) return
                 return session
             }
         }
 
+        const [guildId, channelId] = decodeGuildChannelId(data)
         session.messageId = data.msgId
-        session.timestamp = (data.msgTime as any) * 1000
+        session.timestamp = +data.msgTime * 1000
         session.userId = data.senderUin
-        session.channelId = data.chatType === 1 ? 'private:' + data.peerUin : data.peerUin
-        session.subtype = data.chatType === 1 ? 'private' : 'group'
-        if (data.chatType === 2) {
-            session.guildId = data.peerUin
-        }
+        session.channelId = channelId
+        session.subtype = guildId ? 'group' : 'private'
+        session.guildId = guildId
+        session.isDirect = !guildId
 
         switch (data.msgType) {
             case 5: {

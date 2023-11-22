@@ -17,8 +17,8 @@ const extMap = {
 }
 
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
-    elements: Element[] = []
-    trim = false
+    private elements: Element[] = []
+    private trim = false
 
     async flush(): Promise<void> {
         if (this.elements.length === 0) return
