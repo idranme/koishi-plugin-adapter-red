@@ -12,14 +12,13 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         optional: ['ffmpeg']
     }
     http: Quester
-    logger: Logger
     declare internal: Internal
     redImplName: string
     seqCache = new Map()
     redAssetsLocal: RedAssetsLocal
 
     constructor(ctx: C, config: RedBot.Config) {
-        super(ctx, config)
+        super(ctx, config, 'red')
         this.http = ctx.http.extend({
             ...config,
             endpoint: config.endpoint + '/api',
@@ -29,8 +28,6 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
             },
         })
         this.internal = new Internal(this.http)
-        this.platform = 'red'
-        this.logger = ctx.logger('red')
         this.redAssetsLocal = new RedAssetsLocal(this, config)
         this.redAssetsLocal.start()
         ctx.plugin(WsClient, this)

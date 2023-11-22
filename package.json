@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
   "description": "Adapter for RedProtocol",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -28,7 +28,7 @@
     "url": "https://github.com/idanran"
   },
   "peerDependencies": {
-    "koishi": "^4.15.3"
+    "koishi": "^4.15.5"
   },
   "dependencies": {
     "form-data": "^4.0.0",
@@ -42,11 +42,6 @@
     "description": {
       "zh": "RedProtocol 适配器",
       "en": "Adapter for RedProtocol"
-    },
-    "service": {
-      "optional": [
-        "ffmpeg"
-      ]
     }
   }
 }

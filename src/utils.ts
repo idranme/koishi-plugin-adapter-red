@@ -242,6 +242,7 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
                     }
                 } else if (data.subMsgType === 12) {
                     const { content } = data.elements[0].grayTipElement.xmlElement
+                    if (!content) return
                     const uins = content.match(/(?<=jp=")[0-9]+(?=")/g)
                     session.type = 'guild-member-added'
                     session.operatorId = uins[0]
