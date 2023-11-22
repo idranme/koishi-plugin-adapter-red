@@ -40,11 +40,15 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             }
         }
 
-        let peerUin = this.session.channelId
+        let peerUin = this.channelId
         let chatType = 2
-        if (this.session.channelId.includes('private:')) {
-            peerUin = this.session.channelId.split(':')[1]
+        if (peerUin.includes('private:')) {
+            peerUin = peerUin.split(':')[1]
             chatType = 1
+            if (peerUin.startsWith('temp_')) {
+                peerUin = peerUin.replace('temp_', '')
+                chatType = 100
+            }
         }
 
         if (this.bot.redImplName === 'chronocat') {
@@ -57,7 +61,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 elements: this.elements
             })
 
-            this.bot.seqCache.set(res.peerUin + '/' + res.msgSeq, res.msgId)
+            this.bot.seqCache.set(`${res.chatType}/${res.peerUin}/${res.msgSeq}`, res.msgId)
 
             const session = this.bot.session()
             await decodeMessage(this.bot, res, session.event.message = {}, session.event)

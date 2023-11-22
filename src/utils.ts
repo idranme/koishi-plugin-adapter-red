@@ -66,7 +66,7 @@ export async function decodeMessage(
 ) {
     message.id = data.msgId
 
-    const parse = async (data: Message, noQuote = false) => {
+    const parse = async (data: Message, skipQuote = false) => {
         const result: h[] = []
         for (const v of data.elements) {
             switch (v.elementType) {
@@ -128,7 +128,7 @@ export async function decodeMessage(
                     break
                 }
                 case 7: {
-                    if (noQuote) continue
+                    if (skipQuote) continue
                     const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
                     const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
                     if (msgId) {
@@ -165,7 +165,7 @@ export async function decodeMessage(
 
     payload.user = decodeUser(data)
     payload.member = decodeEventGuildMember(data)
-    payload.timestamp = (data.msgTime as any) * 1000
+    payload.timestamp = +data.msgTime * 1000
     payload.guild = guildId && { id: guildId, name: data.peerName, avatar: `https://p.qlogo.cn/gh/${data.peerUid}/${data.peerUid}/640` }
     payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT, name: data.peerName }
 
@@ -175,22 +175,11 @@ export async function decodeMessage(
 const decodeGuildChannelId = (data: Message) => {
     if (data.chatType === 2) {
         return [data.peerUin, data.peerUin]
+    } else if (data.chatType === 100) {
+        return [undefined, 'private:temp_' + data.peerUin]
     } else {
         return [undefined, 'private:' + data.peerUin]
     }
-}
-
-async function getFile(bot: RedBot, meta: Message, elementId: string) {
-    return bot.http.axios('/message/fetchRichMedia', {
-        method: 'POST',
-        data: {
-            msgId: meta.msgId,
-            chatType: meta.chatType,
-            peerUid: meta.peerUin,
-            elementId,
-        },
-        responseType: 'arraybuffer'
-    })
 }
 
 export async function adaptSession(bot: RedBot, input: WsEvents) {
@@ -209,8 +198,7 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
             case 8:
             case 9: {
                 session.type = 'message'
-                session.isDirect = data.chatType === 1
-                session.subtype = session.isDirect ? 'private' : 'group'
+                session.subtype = data.chatType === 1 || data.chatType === 100 ? 'private' : 'group'
                 await decodeMessage(bot, data, session.event.message = {}, session.event)
                 if (!session.content) return
                 return session
