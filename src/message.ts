@@ -272,6 +272,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             case 'message': {
                 await this.flush()
                 await this.render(children)
+                await this.flush()
                 break
             }
             case 'at': {
