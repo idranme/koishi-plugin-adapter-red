@@ -1,4 +1,4 @@
-import { Bot, Context, Schema, Quester, Logger, Universal } from 'koishi'
+import { Bot, Context, Schema, Quester, Universal } from 'koishi'
 import { WsClient } from './ws'
 import { Internal, Message } from './types'
 import { RedMessageEncoder } from './message'
