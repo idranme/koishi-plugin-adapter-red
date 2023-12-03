@@ -1,14 +1,7 @@
-import { Friend, WsEvents, Message, Group } from './types'
+import { Message, Group, Profile, Peer, Member } from './types'
 import { Universal, h, Dict } from 'koishi'
 import { RedBot } from './bot'
 import * as face from 'qface'
-
-export function genPack(type: string, payload: any) {
-    return JSON.stringify({
-        type,
-        payload
-    })
-}
 
 export const decodeChannel = (guild: Group): Universal.Channel => ({
     id: guild.groupCode,
@@ -21,10 +14,10 @@ export const decodeGuild = (guild: Group): Universal.Guild => ({
     name: guild.groupName,
 })
 
-export const decodeFirendUser = (user: Friend): Universal.User => ({
+export const decodeUser = (user: Profile): Universal.User => ({
     id: user.uin,
     name: user.nick,
-    avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
+    avatar: user.avatarUrl + '640',
 })
 
 const roleMap = {
@@ -33,30 +26,27 @@ const roleMap = {
     4: 'owner'
 }
 
-export const decodeGuildMember = ({ detail }): Universal.GuildMember => ({
-    user: decodeFirendUser(detail),
+export const decodeGuildMember = ({ detail }: { detail: Member }): Universal.GuildMember => ({
+    user: {
+        id: detail.uin,
+        name: detail.nick,
+        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${detail.uin}&spec=640`
+    },
     nick: detail.cardName || detail.nick,
     roles: roleMap[detail.role] && [roleMap[detail.role]]
 })
 
-export const decodeUser = (data: Message): Universal.User => ({
+export const decodeEventUser = (data: Message): Universal.User => ({
     id: data.senderUin,
     name: data.sendNickName,
     avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${data.senderUin}&spec=640`,
 })
 
 export const decodeEventGuildMember = (data: Message): Universal.GuildMember => ({
-    user: decodeUser(data),
+    user: decodeEventUser(data),
     nick: data.sendMemberName || data.sendNickName,
     roles: roleMap[data.roleType] && [roleMap[data.roleType]]
 })
-
-const mimeMap = {
-    1000: 'image/jpeg',
-    1001: 'image/png',
-    1002: 'image/webp',
-    2000: 'image/gif',
-}
 
 export async function decodeMessage(
     bot: RedBot,
@@ -66,7 +56,7 @@ export async function decodeMessage(
 ) {
     message.id = data.msgId
 
-    const parse = async (data: Message, skipQuote = false) => {
+    const parse = async (data: Message, skipQuoteElement = false) => {
         const result: h[] = []
         for (const v of data.elements) {
             switch (v.elementType) {
@@ -89,7 +79,12 @@ export async function decodeMessage(
                 }
                 case 2: {
                     const url = v.picElement.originImageUrl
-                    let mime = mimeMap[v.picElement.picType]
+                    let mime = {
+                        1000: 'image/jpeg',
+                        1001: 'image/png',
+                        1002: 'image/webp',
+                        2000: 'image/gif',
+                    }[v.picElement.picType]
                     if (!mime) {
                         const ext = v.picElement.fileName.split('.').at(-1)
                         switch (ext) {
@@ -128,9 +123,9 @@ export async function decodeMessage(
                     break
                 }
                 case 7: {
-                    if (skipQuote) continue
+                    if (skipQuoteElement) continue
                     const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
-                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
+                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUid}/${replayMsgSeq}`)
                     if (msgId) {
                         const record = data.records[0]
                         const elements = await parse(record, true)
@@ -160,10 +155,7 @@ export async function decodeMessage(
 
     const [guildId, channelId] = decodeGuildChannelId(data)
 
-    //console.log(data)
-    //console.log(data.elements)
-
-    payload.user = decodeUser(data)
+    payload.user = decodeEventUser(data)
     payload.member = decodeEventGuildMember(data)
     payload.timestamp = +data.msgTime * 1000
     payload.guild = guildId && { id: guildId, name: data.peerName, avatar: `https://p.qlogo.cn/gh/${data.peerUid}/${data.peerUid}/640` }
@@ -174,22 +166,24 @@ export async function decodeMessage(
 
 const decodeGuildChannelId = (data: Message) => {
     if (data.chatType === 2) {
-        return [data.peerUin, data.peerUin]
+        return [data.peerUid, data.peerUid]
     } else if (data.chatType === 100) {
-        return [undefined, 'private:temp_' + data.peerUin]
+        return [undefined, 'private:temp_' + data.peerUid]
     } else {
-        return [undefined, 'private:' + data.peerUin]
+        return [undefined, 'private:' + data.peerUid]
     }
 }
 
-export async function adaptSession(bot: RedBot, input: WsEvents) {
+export async function adaptSession(bot: RedBot, input: any) {
     const session = bot.session()
     if (input?.type === 'message::recv') {
         if (input.payload.length === 0) return
 
-        const data = input.payload[0]
+        const data: Message = input.payload[0]
 
-        bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
+        //console.log(data)
+
+        bot.seqCache.set(`${data.chatType}/${data.peerUid}/${data.msgSeq}`, data.msgId)
 
         switch (data.msgType) {
             case 2:
@@ -251,4 +245,22 @@ export async function adaptSession(bot: RedBot, input: WsEvents) {
         return
     }
     return session
+}
+
+export function getPeer(channelId: string): Peer {
+    let peerUin = channelId
+    let chatType: 1 | 2 | 100 = 2
+    if (peerUin.includes('private:')) {
+        peerUin = peerUin.split(':')[1]
+        chatType = 1
+        if (peerUin.startsWith('temp_')) {
+            peerUin = peerUin.replace('temp_', '')
+            chatType = 100
+        }
+    }
+    return {
+        chatType,
+        peerUid: null,
+        peerUin
+    }
 }

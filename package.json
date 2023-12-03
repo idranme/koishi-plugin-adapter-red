@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
-  "description": "Adapter for RedProtocol",
-  "version": "2.3.3",
+  "description": "Red Protocol Adapter for Koishi",
+  "version": "2.4.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -12,15 +12,17 @@
   "keywords": [
     "chatbot",
     "koishi",
-    "plugin",
     "adapter",
     "red",
-    "red-protocol",
-    "redprotocol"
+    "bot",
+    "protocol"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/idanran/koishi-plugin-adapter-red.git"
+  },
+  "bugs": {
+    "url": "https://github.com/idanran/koishi-plugin-adapter-red/issues"
   },
   "author": {
     "email": "idanran@outlook.com",
@@ -31,7 +33,6 @@
     "koishi": "^4.15.5"
   },
   "dependencies": {
-    "form-data": "^4.0.0",
     "qface": "^1.4.1",
     "silk-wasm": "^2.0.2"
   },
@@ -39,10 +40,15 @@
     "koishi-plugin-ffmpeg": "^1.0.3"
   },
   "koishi": {
+    "browser": true,
     "description": {
-      "zh": "RedProtocol 适配器",
-      "en": "Adapter for RedProtocol"
+      "zh": "Red 协议适配器",
+      "en": "Red Protocol Adapter"
     },
-    "browser": true
+    "service": {
+      "implements": [
+        "adapter"
+      ]
+    }
   }
 }

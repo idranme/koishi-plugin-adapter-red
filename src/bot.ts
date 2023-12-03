@@ -1,24 +1,26 @@
 import { Bot, Context, Schema, Quester, Universal } from 'koishi'
 import { WsClient } from './ws'
-import { Internal, Message } from './types'
+import { Message } from './types'
 import { RedMessageEncoder } from './message'
-import { decodeGuildMember, decodeGuild, decodeFirendUser, decodeMessage, decodeChannel } from './utils'
+import { decodeGuildMember, decodeGuild, decodeUser, decodeMessage, decodeChannel, getPeer } from './utils'
 import { RedAssetsLocal } from './assets'
+import { Internal } from './internal'
 
 export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
-    static MessageEncoder = RedMessageEncoder
     static inject = {
         required: ['router'],
         optional: ['ffmpeg']
     }
+    static MessageEncoder = RedMessageEncoder
     http: Quester
-    declare internal: Internal
+    internal: Internal
     redImplName: string
     seqCache = new Map()
     redAssetsLocal: RedAssetsLocal
 
     constructor(ctx: C, config: RedBot.Config) {
         super(ctx, config, 'red')
+        this.selfId = config.selfId
         this.http = ctx.http.extend({
             ...config,
             endpoint: config.endpoint + '/api',
@@ -27,7 +29,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
                 ...config.headers,
             },
         })
-        this.internal = new Internal(this.http)
+        this.internal = new Internal(() => this.http)
         this.redAssetsLocal = new RedAssetsLocal(this, config)
         this.redAssetsLocal.start()
         ctx.plugin(WsClient, this)
@@ -38,29 +40,30 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async getGuildList(_next?: string) {
-        const res = await this.internal.getGroupList()
+        const res = await this.internal.getGroups()
         return { data: res.map(decodeGuild) }
     }
 
     async kickGuildMember(guildId: string, userId: string, permanent?: boolean) {
-        await this.internal.kick({
+        await this.internal.removeGroupMembers({
             group: guildId,
             uidList: [userId],
             refuseForever: permanent,
+            reason: ''
         })
     }
 
     async getGuildMemberList(guildId: string, _next?: string) {
-        const res = await this.internal.getMemberList({
-            group: guildId,
+        const res = await this.internal.getGroupMembers({
+            group: +guildId,
             size: 3000
         })
         return { data: res.map(decodeGuildMember) }
     }
 
     async getGuildMember(guildId: string, userId: string) {
-        const res = await this.internal.getMemberList({
-            group: guildId,
+        const res = await this.internal.getGroupMembers({
+            group: +guildId,
             size: 3000
         })
         const member = res.find((element) => element.detail.uin === userId)
@@ -68,24 +71,14 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async deleteMessage(channelId: string, messageId: string) {
-        let peerUin = channelId
-        let chatType = 2
-        if (channelId.includes('private:')) {
-            peerUin = channelId.split(':')[1]
-            chatType = 1
-        }
-        await this.internal.recall({
+        await this.internal.deleteMessages({
             msgIds: [messageId],
-            peer: {
-                guildId: null,
-                peerUin,
-                chatType
-            }
+            peer: getPeer(channelId)
         })
     }
 
     async muteGuildMember(guildId: string, userId: string, duration?: number, reason?: string) {
-        await this.internal.muteMember({
+        await this.internal.muteGroupMembers({
             group: guildId,
             memList: [{
                 uin: userId,
@@ -95,23 +88,13 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async getFriendList(_next?: string) {
-        const res = await this.internal.getFriendList()
-        return { data: res.map(decodeFirendUser) }
+        const res = await this.internal.getFriends()
+        return { data: res.map(decodeUser) }
     }
 
     async getMessageList(channelId: string, next?: string) {
-        let peerUin = channelId
-        let chatType = 2
-        if (channelId.includes('private:')) {
-            peerUin = channelId.split(':')[1]
-            chatType = 1
-        }
-        const res = await this.internal.getHistory({
-            peer: {
-                guildId: null,
-                peerUin,
-                chatType
-            },
+        const res = await this.internal.getMessages({
+            peer: getPeer(channelId),
             offsetMsgId: next,
             count: 100
         })
@@ -120,18 +103,8 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async getMessage(channelId: string, messageId: string) {
-        let peerUin = channelId
-        let chatType = 2
-        if (channelId.includes('private:')) {
-            peerUin = channelId.split(':')[1]
-            chatType = 1
-        }
-        const res = await this.internal.getHistory({
-            peer: {
-                guildId: null,
-                peerUin,
-                chatType
-            },
+        const res = await this.internal.getMessages({
+            peer: getPeer(channelId),
             offsetMsgId: messageId,
             count: 1
         })
@@ -139,13 +112,13 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async getLogin() {
-        const data = await this.internal.getSelfProfile()
-        this.user = decodeFirendUser(data)
+        const data = await this.internal.getMe()
+        this.user = decodeUser(data)
         return this.toJSON()
     }
 
     async getChannelList(guildId: string) {
-        const res = await this.internal.getGroupList()
+        const res = await this.internal.getGroups()
         const channel = res.find((element) => element.groupCode === guildId)
         return { data: [decodeChannel(channel)] }
     }

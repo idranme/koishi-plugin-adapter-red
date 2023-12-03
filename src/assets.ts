@@ -1,6 +1,6 @@
-import { Context, sanitize, trimSlash } from 'koishi'
+import { Context, sanitize, trimSlash, Quester } from 'koishi'
 import { RedBot } from './bot'
-import { Message } from './types'
+import { Message, MessageFetchRichMediaPayload } from './types'
 
 export class RedAssetsLocal<C extends Context = Context> {
     private path: string
@@ -10,23 +10,19 @@ export class RedAssetsLocal<C extends Context = Context> {
         const payload = Buffer.from(JSON.stringify({
             msgId: message.msgId,
             chatType: message.chatType,
-            peerUid: message.peerUin,
+            peerUid: message.peerUid,
             elementId,
             mime,
             md5
         })).toString('base64')
         return `${this.selfUrl}${this.path}/${payload}`
     }
-    get(payload) {
-        return this.bot.http.axios('/message/fetchRichMedia', {
-            method: 'POST',
-            data: {
-                msgId: payload.msgId,
-                chatType: payload.chatType,
-                peerUid: payload.peerUid,
-                elementId: payload.elementId,
-            },
-            responseType: 'arraybuffer'
+    get(payload: MessageFetchRichMediaPayload) {
+        return this.bot.internal.getFile({
+            msgId: payload.msgId,
+            chatType: payload.chatType,
+            peerUid: payload.peerUid,
+            elementId: payload.elementId,
         })
     }
     get selfUrl() {
@@ -40,11 +36,11 @@ export class RedAssetsLocal<C extends Context = Context> {
         this.bot.ctx.router.get(this.path, async (ctx) => {
             ctx.body = '200 OK'
             ctx.status = 200
-        });
+        })
         this.bot.ctx.router.get(this.path + '/:data', async (ctx) => {
             const payload = JSON.parse(Buffer.from(ctx.params['data'], 'base64').toString())
             const mime = payload.mime
-            let response
+            let response: Quester.AxiosResponse
             try {
                 response = await this.get(payload)
             } catch {
