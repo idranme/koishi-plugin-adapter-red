@@ -1,6 +1,6 @@
 import { Context, sanitize, trimSlash, Quester } from 'koishi'
 import { RedBot } from './bot'
-import { Message, MessageFetchRichMediaPayload } from './types'
+import { Message } from './types'
 
 export class RedAssetsLocal<C extends Context = Context> {
     private path: string
@@ -10,14 +10,14 @@ export class RedAssetsLocal<C extends Context = Context> {
         const payload = Buffer.from(JSON.stringify({
             msgId: message.msgId,
             chatType: message.chatType,
-            peerUid: message.peerUid,
+            peerUid: message.peerUin,
             elementId,
             mime,
             md5
         })).toString('base64')
         return `${this.selfUrl}${this.path}/${payload}`
     }
-    get(payload: MessageFetchRichMediaPayload) {
+    get(payload) {
         return this.bot.internal.getFile({
             msgId: payload.msgId,
             chatType: payload.chatType,
