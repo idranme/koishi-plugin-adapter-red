@@ -17,13 +17,13 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
         if (this.trim) {
             const first = this.elements[0]
-            if (first.elementType === 1 && first?.textElement.atType === 0) {
+            if (first?.elementType === 1 && first?.textElement.atType === 0) {
                 if (first.textElement.content === '\n') {
                     this.elements.splice(0, 1)
                 }
             }
             const last = this.elements.at(-1)
-            if (last.elementType === 1 && last?.textElement.atType === 0) {
+            if (last?.elementType === 1 && last?.textElement.atType === 0) {
                 if (last.textElement.content === '\n') {
                     this.elements.splice(this.elements.length - 1, 1)
                 } else if (last.textElement.content.endsWith('\n')) {
@@ -276,19 +276,19 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             }
             case 'p': {
                 this.trim = true
-                const prev1 = this.elements.at(-1)
-                if (prev1.elementType === 1 && prev1?.textElement.atType === 0) {
-                    if (!prev1.textElement.content.endsWith('\n')) {
-                        prev1.textElement.content += '\n'
+                const prev = this.elements.at(-1)
+                if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
+                    if (!prev.textElement.content.endsWith('\n')) {
+                        prev.textElement.content += '\n'
                     }
                 } else {
                     this.text('\n')
                 }
                 await this.render(children)
-                const prev2 = this.elements.at(-1)
-                if (prev2.elementType === 1 && prev2?.textElement.atType === 0) {
-                    if (!prev2.textElement.content.endsWith('\n')) {
-                        prev2.textElement.content += '\n'
+                const last = this.elements.at(-1)
+                if (last?.elementType === 1 && last?.textElement.atType === 0) {
+                    if (!last.textElement.content.endsWith('\n')) {
+                        last.textElement.content += '\n'
                     }
                 } else {
                     this.text('\n')
@@ -297,7 +297,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             }
             case 'br': {
                 const prev = this.elements.at(-1)
-                if (prev.elementType === 1 && prev?.textElement.atType === 0) {
+                if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
                     prev.textElement.content += '\n'
                 } else {
                     this.text('\n')
