@@ -1,4 +1,4 @@
-import { Bot, Context, Schema, Quester, Universal } from 'koishi'
+import { Bot, Context, Schema, Quester, Universal, trimSlash } from 'koishi'
 import { WsClient } from './ws'
 import { Message } from './types'
 import { RedMessageEncoder } from './message'
@@ -23,7 +23,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         this.selfId = config.selfId
         this.http = ctx.http.extend({
             ...config,
-            endpoint: config.endpoint + '/api',
+            endpoint: trimSlash(config.endpoint) + '/api',
             headers: {
                 Authorization: `Bearer ${config.token}`,
                 ...config.headers,

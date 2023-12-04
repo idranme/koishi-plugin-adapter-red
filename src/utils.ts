@@ -125,7 +125,7 @@ export async function decodeMessage(
                 case 7: {
                     if (skipQuoteElement) continue
                     const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
-                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUid}/${replayMsgSeq}`)
+                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
                     if (msgId) {
                         const record = data.records[0]
                         const elements = await parse(record, true)
@@ -158,7 +158,7 @@ export async function decodeMessage(
     payload.user = decodeEventUser(data)
     payload.member = decodeEventGuildMember(data)
     payload.timestamp = +data.msgTime * 1000
-    payload.guild = guildId && { id: guildId, name: data.peerName, avatar: `https://p.qlogo.cn/gh/${data.peerUid}/${data.peerUid}/640` }
+    payload.guild = guildId && { id: guildId, name: data.peerName, avatar: `https://p.qlogo.cn/gh/${data.peerUin}/${data.peerUin}/640` }
     payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT, name: data.peerName }
 
     return message
@@ -166,11 +166,11 @@ export async function decodeMessage(
 
 const decodeGuildChannelId = (data: Message) => {
     if (data.chatType === 2) {
-        return [data.peerUid, data.peerUid]
+        return [data.peerUin, data.peerUin]
     } else if (data.chatType === 100) {
-        return [undefined, 'private:temp_' + data.peerUid]
+        return [undefined, 'private:temp_' + data.peerUin]
     } else {
-        return [undefined, 'private:' + data.peerUid]
+        return [undefined, 'private:' + data.peerUin]
     }
 }
 
@@ -183,7 +183,7 @@ export async function adaptSession(bot: RedBot, input: any) {
 
         //console.log(data)
 
-        bot.seqCache.set(`${data.chatType}/${data.peerUid}/${data.msgSeq}`, data.msgId)
+        bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
 
         switch (data.msgType) {
             case 2:

@@ -41,7 +41,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 elements: this.elements
             })
 
-            this.bot.seqCache.set(`${res.chatType}/${res.peerUid}/${res.msgSeq}`, res.msgId)
+            this.bot.seqCache.set(`${res.chatType}/${res.peerUin}/${res.msgSeq}`, res.msgId)
 
             const session = this.bot.session()
             await decodeMessage(this.bot, res, session.event.message = {}, session.event)

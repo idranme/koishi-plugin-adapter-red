@@ -265,6 +265,7 @@ export interface Message {
     avatarFlag: number
 
     senderUin: string
+    peerUin: string
 }
 
 export interface Element {
