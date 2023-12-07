@@ -172,12 +172,15 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     private async audio(attrs: Dict) {
         const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
         let voice = new Uint8Array(data)
+        let duration: number
 
-        const head = voice.subarray(0, 7).toString()
+        const head = (new TextDecoder()).decode(voice.subarray(0, 7))
         if (isWavFile(voice)) {
             const pcm = wavToPcm(voice)
-            voice = await encode(pcm.data, pcm.sampleRate)
-        } else if (!head.includes('\x02#!SILK')) {
+            const silk = await encode(pcm.data, pcm.sampleRate)
+            voice = silk.data
+            duration = Math.round(silk.duration / 1000)
+        } else if (!head.includes('#!SILK')) {
             let pcm: Buffer
             const { ffmpeg } = this.bot.ctx
             const input = Buffer.from(voice)
@@ -186,9 +189,11 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             } else {
                 pcm = await audioTransPcm(input)
             }
-            voice = await encode(pcm, 24000)
+            const silk = await encode(pcm, 24000)
+            voice = silk.data
+            duration = Math.round(silk.duration / 1000)
         }
-        const duration = Math.round(getDuration(voice) / 1000)
+        duration ||= Math.round(getDuration(voice) / 1000)
 
         const payload = new FormData()
         const blob = new Blob([voice], { type: 'audio/amr' })

@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
   "description": "Red Protocol Adapter for Koishi",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "qface": "^1.4.1",
-    "silk-wasm": "^2.0.2"
+    "silk-wasm": "^3.0.1"
   },
   "devDependencies": {
     "koishi-plugin-ffmpeg": "^1.0.3"

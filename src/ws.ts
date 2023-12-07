@@ -14,9 +14,10 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, R
             const parsed = JSON.parse(data.toString())
             if (parsed.type === 'meta::connect') {
                 const payload: MetaConnectResponse = parsed.payload
-                const selfId = payload.authData.uin
-                if (selfId !== this.bot.selfId) {
-                    return this.socket.close(1008, `invalid selfId: ${selfId}`)
+                const selfId = this.bot.selfId
+                const currAccount = payload.authData.uin
+                if (selfId !== currAccount) {
+                    return this.socket.close(1008, `configured selfId is ${selfId}, but the currently connected account is ${currAccount}`)
                 }
                 this.bot.redImplName = payload.name
                 this.bot.user = decodeUser(await this.bot.internal.getMe())
