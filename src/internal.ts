@@ -53,4 +53,8 @@ export class Internal {
             responseType: 'arraybuffer'
         })
     }
+
+    muteGroup(data: Red.GroupMuteEveryonePayload) {
+        return this.http().post('/group/muteEveryone', data)
+    }
 }

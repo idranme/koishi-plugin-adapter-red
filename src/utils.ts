@@ -48,6 +48,12 @@ export const decodeEventGuildMember = (data: Message): Universal.GuildMember => 
     roles: roleMap[data.roleType] && [roleMap[data.roleType]]
 })
 
+export const decodeEventGuild = (id: string, name: string): Universal.Guild => ({
+    id,
+    name,
+    avatar: `https://p.qlogo.cn/gh/${id}/${id}/640`
+})
+
 export async function decodeMessage(
     bot: RedBot,
     data: Message,
@@ -158,7 +164,7 @@ export async function decodeMessage(
     payload.user = decodeEventUser(data)
     payload.member = decodeEventGuildMember(data)
     payload.timestamp = +data.msgTime * 1000
-    payload.guild = guildId && { id: guildId, name: data.peerName, avatar: `https://p.qlogo.cn/gh/${data.peerUin}/${data.peerUin}/640` }
+    payload.guild = guildId && decodeEventGuild(guildId, data.peerName)
     payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT, name: data.peerName }
 
     return message
@@ -176,74 +182,70 @@ const decodeGuildChannelId = (data: Message) => {
 
 export async function adaptSession(bot: RedBot, input: any) {
     const session = bot.session()
-    if (input?.type === 'message::recv') {
-        if (input.payload.length === 0) return
+    if (input.type !== 'message::recv') return
+    if (input.payload.length === 0) return
 
-        const data: Message = input.payload[0]
+    const data: Message = input.payload[0]
 
-        //console.log(data)
+    //console.log(data)
 
-        bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
+    bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
 
-        switch (data.msgType) {
-            case 2:
-            case 3:
-            case 6:
-            case 8:
-            case 9: {
-                session.type = 'message'
-                session.subtype = data.chatType === 2 ? 'group' : 'private'
-                await decodeMessage(bot, data, session.event.message = {}, session.event)
-                if (!session.content) return
-                return session
-            }
+    switch (data.msgType) {
+        case 2:
+        case 3:
+        case 6:
+        case 8:
+        case 9: {
+            session.type = 'message'
+            session.subtype = data.chatType === 2 ? 'group' : 'private'
+            await decodeMessage(bot, data, session.event.message = {}, session.event)
+            if (!session.content) return
+            return session
         }
+    }
 
-        const [guildId, channelId] = decodeGuildChannelId(data)
-        session.messageId = data.msgId
-        session.timestamp = +data.msgTime * 1000
-        session.userId = data.senderUin
-        session.channelId = channelId
-        session.subtype = guildId ? 'group' : 'private'
+    const [guildId] = decodeGuildChannelId(data)
+
+    session.timestamp = +data.msgTime * 1000
+
+    if (data.msgType === 5 && data.subMsgType === 8) {
+        const { type, memberUin, groupName, memberNick, adminUin } = data.elements[0].grayTipElement.groupElement
+        if (type === 1) {
+            session.type = 'guild-member-added'
+            session.operatorId = adminUin
+            session.event.user = {
+                id: memberUin,
+                name: memberNick,
+                avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${memberUin}&spec=640`
+            }
+            session.guildId = guildId
+        } else if (type === 5) {
+            session.type = 'guild-updated'
+            session.event.guild = decodeEventGuild(guildId, groupName)
+            session.event.operator = {
+                id: memberUin,
+                name: memberNick
+            }
+        } else {
+            return
+        }
+    } else if (data.msgType === 5 && data.subMsgType === 12) {
+        const { content } = data.elements[0].grayTipElement.xmlElement
+        if (!content) return
+        const uins = content.match(/(?<=jp=")[0-9]+(?=")/g)
+        if (!uins || uins.length !== 2) return
+        session.type = 'guild-member-added'
+        session.operatorId = uins[0]
+        session.event.user = {
+            id: uins[1],
+            avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uins[1]}&spec=640`
+        }
         session.guildId = guildId
-        session.isDirect = !guildId
-
-        switch (data.msgType) {
-            case 5: {
-                if (data.subMsgType === 8) {
-                    const groupElement = data.elements[0].grayTipElement.groupElement as any
-                    if (groupElement.type === 1) {
-                        session.type = 'guild-member-added'
-                        session.operatorId = groupElement.memberUin
-                        session.event.user = {
-                            id: groupElement.memberUin,
-                            avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${groupElement.memberUin}&spec=640`
-                        }
-                    } else {
-                        return
-                    }
-                } else if (data.subMsgType === 12) {
-                    const { content } = data.elements[0].grayTipElement.xmlElement
-                    if (!content) return
-                    const uins = content.match(/(?<=jp=")[0-9]+(?=")/g)
-                    session.type = 'guild-member-added'
-                    session.operatorId = uins[0]
-                    session.event.user = {
-                        id: uins[1],
-                        avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uins[1]}&spec=640`
-                    }
-                } else {
-                    return
-                }
-                break
-            }
-            default:
-                return
-        }
-
     } else {
         return
     }
+
     return session
 }
 
@@ -260,7 +262,6 @@ export function getPeer(channelId: string): Peer {
     }
     return {
         chatType,
-        peerUid: null,
         peerUin
     }
 }

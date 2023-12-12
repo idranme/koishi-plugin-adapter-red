@@ -80,7 +80,7 @@ export interface Member {
 
 export interface Peer {
     chatType: 1 | 2 | 100
-    peerUid: string
+    peerUid?: string
     peerUin: string
     guildId?: string
 }

@@ -8,7 +8,7 @@ import { Internal } from './internal'
 
 export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static inject = {
-        required: ['router'],
+        required: ['server'],
         optional: ['ffmpeg']
     }
     static MessageEncoder = RedMessageEncoder
