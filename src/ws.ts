@@ -5,8 +5,8 @@ import { WsPackage, MetaConnectResponse } from './types'
 
 export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, RedBot<C>> {
     async prepare() {
-        const { host } = new URL(this.bot.config.endpoint)
-        return this.bot.http.ws('ws://' + host)
+        const { protocol, host } = new URL(this.bot.config.endpoint)
+        return this.bot.http.ws(protocol === 'https:' ? 'wss://' : 'ws://' + host)
     }
 
     accept() {
