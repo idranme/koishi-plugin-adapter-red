@@ -54,6 +54,12 @@ export const decodeEventGuild = (id: string, name: string): Universal.Guild => (
     avatar: `https://p.qlogo.cn/gh/${id}/${id}/640`
 })
 
+export const decodeEventChannel = (channelId: string, guildId: string | undefined, name?: string): Universal.Channel => ({
+    id: channelId,
+    name,
+    type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT
+})
+
 export async function decodeMessage(
     bot: RedBot,
     data: Message,
@@ -165,7 +171,7 @@ export async function decodeMessage(
     payload.member = decodeEventGuildMember(data)
     payload.timestamp = +data.msgTime * 1000
     payload.guild = guildId && decodeEventGuild(guildId, data.peerName)
-    payload.channel = channelId && { id: channelId, type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT, name: data.peerName }
+    payload.channel = decodeEventChannel(channelId, guildId, data.peerName)
 
     return message
 }
@@ -205,9 +211,10 @@ export async function adaptSession(bot: RedBot, input: any) {
         }
     }
 
-    const [guildId] = decodeGuildChannelId(data)
+    const [guildId, channelId] = decodeGuildChannelId(data)
 
     session.timestamp = +data.msgTime * 1000
+    session.event.channel = decodeEventChannel(channelId, guildId)
 
     if (data.msgType === 5 && data.subMsgType === 8) {
         const { type, memberUin, groupName, memberNick, adminUin } = data.elements[0].grayTipElement.groupElement
