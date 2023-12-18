@@ -67,6 +67,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
             size: 3000
         })
         const member = res.find((element) => element.detail.uin === userId)
+        if (!member) throw new Error(`member ${userId} was not found in group ${guildId}`)
         return decodeGuildMember(member)
     }
 

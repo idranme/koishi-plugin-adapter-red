@@ -17,7 +17,7 @@ export const decodeGuild = (guild: Group): Universal.Guild => ({
 export const decodeUser = (user: Profile): Universal.User => ({
     id: user.uin,
     name: user.nick,
-    avatar: user.avatarUrl + '640',
+    avatar: user.avatarUrl ? user.avatarUrl + '640' : `http://q.qlogo.cn/headimg_dl?dst_uin=${user.uin}&spec=640`,
 })
 
 const roleMap = {
@@ -90,15 +90,15 @@ export async function decodeMessage(
                     break
                 }
                 case 2: {
-                    const url = v.picElement.originImageUrl
+                    const { originImageUrl, picType, fileName, md5HexStr, picWidth, picHeight } = v.picElement
                     let mime = {
                         1000: 'image/jpeg',
                         1001: 'image/png',
                         1002: 'image/webp',
                         2000: 'image/gif',
-                    }[v.picElement.picType]
+                    }[picType]
                     if (!mime) {
-                        const ext = v.picElement.fileName.split('.').at(-1)
+                        const ext = fileName.split('.').at(-1)
                         switch (ext) {
                             case 'jpg':
                                 mime = 'image/jpeg'
@@ -108,13 +108,18 @@ export async function decodeMessage(
                                 break
                         }
                     }
-                    if (!url) {
-                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime, v.picElement.md5HexStr)))
-                    } else if (url.includes('&rkey')) {
-                        result.push(h.image(bot.redAssetsLocal.set(data, v.elementId, mime, v.picElement.md5HexStr)))
+                    let url: string
+                    if (!originImageUrl) {
+                        url = bot.redAssetsLocal.set(data, v.elementId, mime, md5HexStr)
+                    } else if (originImageUrl.includes('&rkey')) {
+                        url = bot.redAssetsLocal.set(data, v.elementId, mime, md5HexStr)
                     } else {
-                        result.push(h.image(`https://c2cpicdw.qpic.cn${url}`))
+                        url = `https://c2cpicdw.qpic.cn${originImageUrl}`
                     }
+                    result.push(h.image(url, {
+                        width: picWidth,
+                        height: picHeight
+                    }))
                     break
                 }
                 case 3: {

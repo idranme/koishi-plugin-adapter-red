@@ -217,10 +217,13 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private quote(attrs: Dict) {
+        const senderUin = this.bot.selfId
         this.elements.push({
             elementType: 7,
             replyElement: {
                 replayMsgId: attrs.id,
+                senderUin,
+                senderUinStr: senderUin
             }
         })
     }
