@@ -322,11 +322,11 @@ export interface PicElement {
 export interface FaceElement {
     faceIndex: number
     faceText?: unknown
-    faceType: 1 | 5
-    packId?: unknown
-    stickerId?: unknown
+    faceType: 1 | 2 | 3 | 5
+    packId?: string
+    stickerId?: string
     sourceType?: unknown
-    stickerType?: unknown
+    stickerType?: number
     resultId?: unknown
     surpriseId?: unknown
     randomType?: unknown

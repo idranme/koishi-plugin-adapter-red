@@ -1,7 +1,6 @@
 import { Message, Group, Profile, Peer, Member } from './types'
 import { Universal, h, Dict } from 'koishi'
 import { RedBot } from './bot'
-import * as face from 'qface'
 
 export const decodeChannel = (guild: Group): Universal.Channel => ({
     id: guild.groupCode,
@@ -132,11 +131,12 @@ export async function decodeMessage(
                     break
                 }
                 case 6: {
-                    const { faceText, faceIndex, faceType } = v.faceElement as Dict
-                    const name = faceText ? faceText.slice(1) : face.get(faceIndex).QDes.slice(1)
-                    result.push(h('face', { id: faceIndex, name, platform: bot.platform, 'red:type': faceType }, [
-                        h.image(face.getUrl(faceIndex))
-                    ]))
+                    const { faceIndex, faceType, stickerType, packId, stickerId } = v.faceElement
+                    let id = `${faceIndex}:${faceType}`
+                    if (stickerType) {
+                        id += `:${stickerType}:${packId}:${stickerId}`
+                    }
+                    result.push(h('face', { id, platform: bot.platform }))
                     break
                 }
                 case 7: {
@@ -243,10 +243,10 @@ export async function adaptSession(bot: RedBot, input: any) {
             return
         }
     } else if (data.msgType === 5 && data.subMsgType === 12) {
-        const { content } = data.elements[0].grayTipElement.xmlElement
-        if (!content) return
-        const uins = content.match(/(?<=jp=")[0-9]+(?=")/g)
-        if (!uins || uins.length !== 2) return
+        const { xmlElement } = data.elements[0].grayTipElement
+        if (!xmlElement?.content) return
+        const uins = xmlElement.content.match(/(?<=jp=")[0-9]+(?=")/g)
+        if (uins?.length !== 2) return
         session.type = 'guild-member-added'
         session.operatorId = uins[0]
         session.event.user = {
