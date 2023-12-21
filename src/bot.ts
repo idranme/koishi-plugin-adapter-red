@@ -31,7 +31,6 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         })
         this.internal = new Internal(() => this.http)
         this.redAssetsLocal = new RedAssetsLocal(this, config)
-        this.redAssetsLocal.start()
         ctx.plugin(WsClient, this)
     }
 

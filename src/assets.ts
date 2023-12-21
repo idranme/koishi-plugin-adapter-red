@@ -1,11 +1,16 @@
-import { Context, sanitize, trimSlash, Quester } from 'koishi'
+import { Context, sanitize, trimSlash, Quester, Dict } from 'koishi'
 import { RedBot } from './bot'
 import { Message } from './types'
-import {} from '@koishijs/plugin-server'
+import { } from '@koishijs/plugin-server'
 
 export class RedAssetsLocal<C extends Context = Context> {
     private path: string
     constructor(private bot: RedBot<C>, private config: RedBot.Config) {
+        const num = Number(this.bot.selfId) || 0
+        const unique = num.toString(32)
+        this.path = sanitize(`${this.config.path || '/files'}/${unique}`)
+        this.bot.logger.info(`current assets are located at ${this.path}`)
+        this.listen()
     }
     set(message: Message, elementId: string, mime: string, md5: string) {
         const payload = Buffer.from(JSON.stringify({
@@ -18,7 +23,7 @@ export class RedAssetsLocal<C extends Context = Context> {
         })).toString('base64')
         return `${this.selfUrl}${this.path}/${payload}`
     }
-    get(payload) {
+    get(payload: Dict) {
         return this.bot.internal.getFile({
             msgId: payload.msgId,
             chatType: payload.chatType,
@@ -26,14 +31,13 @@ export class RedAssetsLocal<C extends Context = Context> {
             elementId: payload.elementId,
         })
     }
-    get selfUrl() {
+    private get selfUrl() {
         if (this.config.selfUrl) {
             return trimSlash(this.config.selfUrl)
         }
         return this.bot.ctx.server.selfUrl || `http://127.0.0.1:${this.bot.ctx.server.port}`
     }
-    start() {
-        this.path = sanitize(this.config.path || '/files')
+    private listen() {
         this.bot.ctx.server.get(this.path, async (ctx) => {
             ctx.body = '200 OK'
             ctx.status = 200

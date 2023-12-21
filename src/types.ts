@@ -7,6 +7,16 @@ export interface WsPackage<P extends object = Record<string, unknown>> {
     payload: P
 }
 
+export interface GatewayEvents {
+    /** 戳一戳、设置群代办、签到 */
+    UNSAFE_NOTIFY: UnsafeNotify
+}
+
+export interface UnsafeNotify {
+    id: number
+    isGroup: boolean
+}
+
 export interface MetaConnectPayload {
     token: string
 }

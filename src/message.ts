@@ -1,10 +1,11 @@
 import { Dict, h, MessageEncoder, Context } from 'koishi'
 import { RedBot } from './bot'
 import { MessageSendPayload } from './types'
-import { audioTransPcm, wavToPcm, isWavFile } from './audio'
+import { audioTransPcm, wavToPcm } from './audio'
 import { basename } from 'path'
 import { decodeMessage, getPeer } from './utils'
 import { encode, getDuration } from 'silk-wasm'
+import { isWavFile } from 'wav-file-decoder-cjs'
 import { } from 'koishi-plugin-ffmpeg'
 
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
@@ -257,11 +258,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 break
             }
             case 'face': {
-                if (attrs.platform && attrs.platform !== this.bot.platform) {
-                    await this.render(children)
-                } else {
-                    this.face(attrs)
-                }
+                this.face(attrs)
                 break
             }
             case 'figure': {

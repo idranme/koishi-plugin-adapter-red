@@ -1,4 +1,4 @@
-import { Message, Group, Profile, Peer, Member } from './types'
+import { Message, Group, Profile, Peer, Member, WsPackage } from './types'
 import { Universal, h, Dict } from 'koishi'
 import { RedBot } from './bot'
 
@@ -127,7 +127,7 @@ export async function decodeMessage(
                     break
                 }
                 case 4: {
-                    result.push(h.audio(bot.redAssetsLocal.set(data, v.elementId, 'audio/amr', (v.pttElement as any).md5HexStr)))
+                    result.push(h.audio(bot.redAssetsLocal.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr)))
                     break
                 }
                 case 6: {
@@ -191,12 +191,12 @@ const decodeGuildChannelId = (data: Message) => {
     }
 }
 
-export async function adaptSession(bot: RedBot, input: any) {
+export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
     const session = bot.session()
     if (input.type !== 'message::recv') return
     if (input.payload.length === 0) return
 
-    const data: Message = input.payload[0]
+    const data = input.payload[0]
 
     //console.log(data)
 

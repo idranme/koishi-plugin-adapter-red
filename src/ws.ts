@@ -22,6 +22,12 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, R
                 this.bot.redImplName = payload.name
                 this.bot.user = decodeUser(await this.bot.internal.getMe())
                 return this.bot.online()
+            } else if (parsed.type === 'message::poke') {
+                this.bot.dispatch(this.bot.session({
+                    type: 'internal',
+                    _type: 'red/unsafe-notify',
+                    _data: parsed.payload[0],
+                }))
             }
 
             const session = await adaptSession(this.bot, parsed)
