@@ -23,15 +23,15 @@ export class Internal {
     }
 
     getMe() {
-        return this.http().post<Red.Profile>('/getSelfProfile')
+        return this.http().get<Red.Profile>('/getSelfProfile')
     }
 
     getGroups() {
-        return this.http().post<Red.GetGroupsResponse>('/bot/groups')
+        return this.http().get<Red.GetGroupsResponse>('/bot/groups')
     }
 
     getFriends() {
-        return this.http().post<Red.GetFriendsResponse>('/bot/friends')
+        return this.http().get<Red.GetFriendsResponse>('/bot/friends')
     }
 
     deleteMessages(data: Red.MessageRecallPayload) {

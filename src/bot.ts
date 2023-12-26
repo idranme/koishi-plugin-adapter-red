@@ -3,7 +3,7 @@ import { WsClient } from './ws'
 import { Message } from './types'
 import { RedMessageEncoder } from './message'
 import { decodeGuildMember, decodeGuild, decodeUser, decodeMessage, decodeChannel, getPeer } from './utils'
-import { RedAssetsLocal } from './assets'
+import { RedAssets } from './assets'
 import { Internal } from './internal'
 
 export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
@@ -16,7 +16,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     internal: Internal
     redImplName: string
     seqCache = new Map()
-    redAssetsLocal: RedAssetsLocal
+    redAssets: RedAssets
 
     constructor(ctx: C, config: RedBot.Config) {
         super(ctx, config, 'red')
@@ -30,7 +30,9 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
             },
         })
         this.internal = new Internal(() => this.http)
-        this.redAssetsLocal = new RedAssetsLocal(this, config)
+        setTimeout(() => {
+            this.redAssets = new RedAssets(this, config)
+        }, 0)
         ctx.plugin(WsClient, this)
     }
 

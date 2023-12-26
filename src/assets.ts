@@ -3,7 +3,7 @@ import { RedBot } from './bot'
 import { Message } from './types'
 import { } from '@koishijs/plugin-server'
 
-export class RedAssetsLocal<C extends Context = Context> {
+export class RedAssets<C extends Context = Context> {
     private path: string
     constructor(private bot: RedBot<C>, private config: RedBot.Config) {
         const num = Number(this.bot.selfId) || 0

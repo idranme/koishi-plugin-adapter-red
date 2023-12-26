@@ -109,9 +109,9 @@ export async function decodeMessage(
                     }
                     let url: string
                     if (!originImageUrl) {
-                        url = bot.redAssetsLocal.set(data, v.elementId, mime, md5HexStr)
+                        url = bot.redAssets.set(data, v.elementId, mime, md5HexStr)
                     } else if (originImageUrl.includes('&rkey')) {
-                        url = bot.redAssetsLocal.set(data, v.elementId, mime, md5HexStr)
+                        url = bot.redAssets.set(data, v.elementId, mime, md5HexStr)
                     } else {
                         url = `https://c2cpicdw.qpic.cn${originImageUrl}`
                     }
@@ -127,7 +127,7 @@ export async function decodeMessage(
                     break
                 }
                 case 4: {
-                    result.push(h.audio(bot.redAssetsLocal.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr)))
+                    result.push(h.audio(bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr)))
                     break
                 }
                 case 6: {

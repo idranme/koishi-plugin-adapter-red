@@ -4,8 +4,8 @@ import { MessageSendPayload } from './types'
 import { audioTransPcm, wavToPcm } from './audio'
 import { basename } from 'path'
 import { decodeMessage, getPeer } from './utils'
-import { encode, getDuration } from 'silk-wasm'
 import { isWavFile } from 'wav-file-decoder-cjs'
+import { silkEncode, silkGetDuration } from './silk'
 import { } from 'koishi-plugin-ffmpeg'
 
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
@@ -163,25 +163,29 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         let duration: number
 
         const head = (new TextDecoder()).decode(voice.subarray(0, 7))
+        let pcm: { data: Uint8Array; sampleRate: number }
         if (isWavFile(voice)) {
-            const pcm = wavToPcm(voice)
-            const silk = await encode(pcm.data, pcm.sampleRate)
-            voice = silk.data
-            duration = Math.round(silk.duration / 1000)
+            pcm = wavToPcm(voice)
         } else if (!head.includes('#!SILK')) {
-            let pcm: Buffer
+            let data: Buffer
             const { ffmpeg } = this.bot.ctx
             const input = Buffer.from(voice)
             if (ffmpeg) {
-                pcm = await ffmpeg.builder().input(input).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
+                data = await ffmpeg.builder().input(input).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
             } else {
-                pcm = await audioTransPcm(input)
+                data = await audioTransPcm(input)
             }
-            const silk = await encode(pcm, 24000)
+            pcm = {
+                data,
+                sampleRate: 24000
+            }
+        }
+        if (pcm) {
+            const silk = await silkEncode(pcm.data, pcm.sampleRate)
             voice = silk.data
             duration = Math.round(silk.duration / 1000)
         }
-        duration ||= Math.round(getDuration(voice) / 1000)
+        duration ||= Math.round((await silkGetDuration(voice)) / 1000)
 
         const payload = new FormData()
         const blob = new Blob([voice], { type: 'audio/amr' })
