@@ -90,7 +90,7 @@ function postMessage<T extends any>(data: Dict): Promise<T> {
             if (!isError && data.type === 'encode') {
                 const interval = Date.now() - lastTime
                 const sizeInMB = ret.data.length / 1_048_576
-                const minInterval = sizeInMB * 1150
+                const minInterval = sizeInMB * 1300
                 if (interval < minInterval) {
                     await sleep(minInterval - interval)
                 }
