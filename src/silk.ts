@@ -1,11 +1,8 @@
-/**
- * Forked from https://github.com/xfdown/xiaofei-plugin/blob/master/model/silk_worker/index.cjs
- * Its license: https://github.com/xfdown/xiaofei-plugin/blob/master/LICENSE
- */
 import { encode, decode, getDuration, encodeResult, decodeResult } from 'silk-wasm'
 import { isMainThread, parentPort, Worker, MessageChannel } from 'node:worker_threads'
-import { Dict } from 'koishi'
-import { cpus } from 'node:os'
+import { Dict, sleep } from 'koishi'
+import { availableParallelism } from 'node:os'
+import { Semaphore } from '@shopify/semaphore'
 
 interface WorkerInstance {
     worker: Worker
@@ -13,9 +10,9 @@ interface WorkerInstance {
 }
 
 if (!isMainThread && parentPort) {
-    parentPort.addListener('message', (val) => {
-        const data: Dict = val.data
-        const port: MessagePort = val.port
+    parentPort.addListener('message', (e) => {
+        const data: Dict = e.data
+        const port: MessagePort = e.port
         switch (data?.type) {
             case "encode":
                 encode(data.input, data.sampleRate)
@@ -54,8 +51,8 @@ if (!isMainThread && parentPort) {
 }
 
 const workers: WorkerInstance[] = []
-const numCPUs = cpus().length
-let availability = 0
+const maxThreads = Math.min(availableParallelism(), 2)
+let lastTime = Date.now(), used = 0
 
 function postMessage<T extends any>(data: Dict): Promise<T> {
     let indexing = 0
@@ -64,7 +61,7 @@ function postMessage<T extends any>(data: Dict): Promise<T> {
             worker: new Worker(__filename),
             busy: false
         })
-        availability++
+        used++
     } else {
         let found = false
         for (const [index, value] of workers.entries()) {
@@ -79,7 +76,7 @@ function postMessage<T extends any>(data: Dict): Promise<T> {
                 worker: new Worker(__filename),
                 busy: false
             })
-            availability++
+            used++
             indexing = len - 1
         }
     }
@@ -87,28 +84,46 @@ function postMessage<T extends any>(data: Dict): Promise<T> {
     const subChannel = new MessageChannel()
     const port = subChannel.port2
     return new Promise((resolve, reject) => {
-        port.once('message', (ret) => {
+        port.once('message', async (ret) => {
             port.close()
-            workers[indexing].busy = false
-            if (availability > numCPUs - 1) {
+            const isError = ret instanceof Error
+            if (!isError && data.type === 'encode') {
+                const interval = Date.now() - lastTime
+                const sizeInMB = ret.data.length / 1_048_576
+                const minInterval = sizeInMB * 1150
+                if (interval < minInterval) {
+                    await sleep(minInterval - interval)
+                }
+            }
+            if (used > maxThreads - 1) {
                 workers[indexing].worker.terminate()
                 workers[indexing] = undefined
-                availability--
+                used--
+            } else {
+                workers[indexing].busy = false
             }
-            ret instanceof Error ? reject(ret) : resolve(ret)
+            isError ? reject(ret) : resolve(ret)
         })
         workers[indexing].worker.postMessage({ port: subChannel.port1, data: data }, [subChannel.port1])
     })
 }
 
-export function silkEncode(input: Uint8Array, sampleRate: number) {
-    return postMessage<encodeResult>({ type: 'encode', input, sampleRate })
+const semaphore = new Semaphore(maxThreads)
+
+export async function silkEncode(input: Uint8Array, sampleRate: number) {
+    const permit = await semaphore.acquire()
+    return postMessage<encodeResult>({ type: 'encode', input, sampleRate }).finally(() => {
+        lastTime = Date.now()
+        permit.release()
+    })
 }
 
-export function silkDecode(input: Uint8Array, sampleRate: number) {
-    return postMessage<decodeResult>({ type: 'decode', input, sampleRate })
+export async function silkDecode(input: Uint8Array, sampleRate: number) {
+    const permit = await semaphore.acquire()
+    return postMessage<decodeResult>({ type: 'decode', input, sampleRate }).finally(() => permit.release())
 }
 
-export function silkGetDuration(silk: Uint8Array, frameMs = 20) {
-    return postMessage<number>({ type: 'getDuration', silk, frameMs })
+export async function silkGetDuration(silk: Uint8Array, frameMs = 20) {
+    const permit = await semaphore.acquire()
+    return postMessage<number>({ type: 'getDuration', silk, frameMs }).finally(() => permit.release())
 }
