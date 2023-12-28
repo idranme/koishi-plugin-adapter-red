@@ -51,8 +51,8 @@ if (!isMainThread && parentPort) {
 }
 
 const workers: WorkerInstance[] = []
-const maxThreads = Math.min(availableParallelism(), 2)
-let lastTime = Date.now(), used = 0
+let maxThreads = 1
+let lastTime = 0, used = 0
 
 function postMessage<T extends any>(data: Dict): Promise<T> {
     let indexing = 0
@@ -108,9 +108,17 @@ function postMessage<T extends any>(data: Dict): Promise<T> {
     })
 }
 
-const semaphore = new Semaphore(maxThreads)
+let semaphore: Semaphore
+
+function init(){
+    if(!semaphore){
+        maxThreads = Math.min(availableParallelism(), 2)
+        semaphore = new Semaphore(maxThreads)
+    }
+}
 
 export async function silkEncode(input: Uint8Array, sampleRate: number) {
+    init()
     const permit = await semaphore.acquire()
     return postMessage<encodeResult>({ type: 'encode', input, sampleRate }).finally(() => {
         lastTime = Date.now()
@@ -119,11 +127,13 @@ export async function silkEncode(input: Uint8Array, sampleRate: number) {
 }
 
 export async function silkDecode(input: Uint8Array, sampleRate: number) {
+    init()
     const permit = await semaphore.acquire()
     return postMessage<decodeResult>({ type: 'decode', input, sampleRate }).finally(() => permit.release())
 }
 
 export async function silkGetDuration(silk: Uint8Array, frameMs = 20) {
+    init()
     const permit = await semaphore.acquire()
     return postMessage<number>({ type: 'getDuration', silk, frameMs }).finally(() => permit.release())
 }
