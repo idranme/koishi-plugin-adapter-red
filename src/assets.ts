@@ -20,7 +20,7 @@ export class RedAssets<C extends Context = Context> {
             elementId,
             mime,
             md5
-        })).toString('base64')
+        })).toString('base64url')
         return `${this.selfUrl}${this.path}/${payload}`
     }
     get(payload: Dict) {
@@ -43,7 +43,13 @@ export class RedAssets<C extends Context = Context> {
             ctx.status = 200
         })
         this.bot.ctx.server.get(this.path + '/:data', async (ctx) => {
-            const payload = JSON.parse(Buffer.from(ctx.params['data'], 'base64').toString())
+            const data = ctx.params['data']
+            let payload: Dict
+            if (data.endsWith('=')) {
+                payload = JSON.parse(Buffer.from(data, 'base64').toString())
+            } else {
+                payload = JSON.parse(Buffer.from(data, 'base64url').toString())
+            }
             const mime = payload.mime
             let response: Quester.AxiosResponse
             try {

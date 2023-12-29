@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
   "description": "Red Protocol Adapter for Koishi",
-  "version": "2.7.5",
+  "version": "2.7.6",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -15,7 +15,8 @@
     "adapter",
     "red",
     "bot",
-    "protocol"
+    "protocol",
+    "robotics"
   ],
   "repository": {
     "type": "git",
