@@ -54,16 +54,20 @@ export class RedAssets<C extends Context = Context> {
             let response: Quester.AxiosResponse
             try {
                 response = await this.get(payload)
-            } catch {
+            } catch (e) {
                 if (mime.includes('image')) {
                     response = await this.bot.ctx.http.axios(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${payload.md5.toUpperCase()}/0`, {
                         method: 'GET',
                         responseType: 'arraybuffer'
                     })
                 }
+                response ||= e.response
             }
             ctx.body = response.data
-            ctx.type = mime || response.headers['content-type']
+            ctx.type = response.headers['content-type']
+            if (!ctx.type && response.status === 200) {
+                ctx.type = mime
+            }
             ctx.header['date'] = response.headers['date']
             ctx.status = response.status
         })

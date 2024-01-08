@@ -10,6 +10,7 @@ export interface WsPackage<P extends object = Record<string, unknown>> {
 export interface GatewayEvents {
     /** 戳一戳、设置群代办、签到 */
     UNSAFE_NOTIFY: UnsafeNotify
+    UNSAFE_MESSAGE: Message
 }
 
 export interface UnsafeNotify {

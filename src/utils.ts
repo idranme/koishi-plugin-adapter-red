@@ -1,6 +1,7 @@
 import { Message, Group, Profile, Peer, Member, WsPackage } from './types'
 import { Universal, h, Dict } from 'koishi'
 import { RedBot } from './bot'
+import { extname } from 'node:path'
 
 export const decodeChannel = (guild: Group): Universal.Channel => ({
     id: guild.groupCode,
@@ -70,22 +71,17 @@ export async function decodeMessage(
     const parse = async (data: Message, skipQuoteElement = false) => {
         const result: h[] = []
         for (const v of data.elements) {
+            let newElement: h
             switch (v.elementType) {
                 case 1: {
                     const { atType, atUid, content, atNtUin } = v.textElement
                     if (atType === 1) {
-                        result.push(h('at', {
-                            type: 'all'
-                        }))
-                        continue
+                        newElement = h('at', { type: 'all' })
                     }
                     if (atType === 2) {
-                        result.push(h.at(atNtUin || atUid, {
-                            name: content.replace('@', '')
-                        }))
-                        continue
+                        newElement = h.at(atNtUin || atUid, { name: content.replace('@', '') })
                     }
-                    result.push(h.text(v.textElement.content))
+                    newElement ||= h.text(v.textElement.content)
                     break
                 }
                 case 2: {
@@ -96,38 +92,30 @@ export async function decodeMessage(
                         1002: 'image/webp',
                         2000: 'image/gif',
                     }[picType]
-                    if (!mime) {
-                        const ext = fileName.split('.').at(-1)
-                        switch (ext) {
-                            case 'jpg':
-                                mime = 'image/jpeg'
-                                break
-                            default:
-                                mime = 'application/octet-stream'
-                                break
-                        }
-                    }
+                    mime ||= {
+                        '.jpg': 'image/jpeg'
+                    }[extname(fileName)] ?? 'application/octet-stream'
                     let url: string
-                    if (!originImageUrl) {
-                        url = bot.redAssets.set(data, v.elementId, mime, md5HexStr)
-                    } else if (originImageUrl.includes('&rkey')) {
-                        url = bot.redAssets.set(data, v.elementId, mime, md5HexStr)
-                    } else {
+                    if (originImageUrl && !originImageUrl.includes('&rkey')) {
                         url = `https://c2cpicdw.qpic.cn${originImageUrl}`
                     }
-                    result.push(h.image(url, {
+                    url ||= bot.redAssets.set(data, v.elementId, mime, md5HexStr)
+                    newElement = h.image(url, {
                         width: picWidth,
                         height: picHeight
-                    }))
+                    })
                     break
                 }
                 case 3: {
-                    //const file = await getFile(bot, data, v.elementId)
-                    //result.push(h.file(file.data, file.headers['content-type']))
+                    // File
                     break
                 }
                 case 4: {
-                    result.push(h.audio(bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr)))
+                    newElement = h.audio(bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr))
+                    break
+                }
+                case 5: {
+                    newElement = h.video(bot.redAssets.set(data, v.elementId, 'application/octet-stream', v.videoElement.videoMd5))
                     break
                 }
                 case 6: {
@@ -136,7 +124,7 @@ export async function decodeMessage(
                     if (stickerType) {
                         id += `:${stickerType}:${packId}:${stickerId}`
                     }
-                    result.push(h('face', { id, platform: bot.platform }))
+                    newElement = h('face', { id, platform: bot.platform })
                     break
                 }
                 case 7: {
@@ -145,22 +133,21 @@ export async function decodeMessage(
                     const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
                     if (msgId) {
                         const record = data.records[0]
-                        const elements = await parse(record, true)
+                        const elements = record && await parse(record, true)
                         message.quote = {
                             id: msgId,
                             user: {
                                 id: senderUid,
-                                name: record.sendMemberName || record.sendNickName
+                                name: record?.sendMemberName || record?.sendNickName
                             },
-                            content: elements.join(''),
+                            content: elements?.join(''),
                             elements
                         }
-                    } else {
-                        //bot.logger.warn('由用户 %o (%o) 发送的消息的 quote 部分无法获取，请确保机器人保持运行状态。若无问题，可忽视此信息。', session.userId, session.author.name)
                     }
                     break
                 }
             }
+            newElement && result.push(newElement)
         }
         return result
     }
@@ -198,14 +185,13 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
 
     const data = input.payload[0]
 
-    //console.log(data)
-
     bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
 
     switch (data.msgType) {
         case 2:
         case 3:
         case 6:
+        case 7:
         case 8:
         case 9: {
             session.type = 'message'
@@ -277,3 +263,5 @@ export function getPeer(channelId: string): Peer {
         peerUin
     }
 }
+
+export const toUTF8String = (input: Uint8Array, start = 0, end = input.length) => (new TextDecoder()).decode(input.slice(start, end))

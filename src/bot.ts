@@ -9,7 +9,7 @@ import { Internal } from './internal'
 export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static inject = {
         required: ['server'],
-        optional: ['ffmpeg']
+        optional: ['ffmpeg', 'silk']
     }
     static MessageEncoder = RedMessageEncoder
     http: Quester

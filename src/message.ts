@@ -1,12 +1,14 @@
 import { Dict, h, MessageEncoder, Context } from 'koishi'
 import { RedBot } from './bot'
 import { MessageSendPayload } from './types'
-import { audioTransPcm, wavToPcm } from './audio'
-import { basename } from 'path'
-import { decodeMessage, getPeer } from './utils'
+import { convertToPcm, wavToPcm, getVideoCover, calculatePngSize } from './media'
+import { basename, dirname, extname } from 'node:path'
+import { decodeMessage, getPeer, toUTF8String } from './utils'
 import { isWavFile } from 'wav-file-decoder-cjs'
-import { silkEncode, silkGetDuration } from './silk'
+import { rename, mkdir, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { } from 'koishi-plugin-ffmpeg'
+import { } from 'koishi-plugin-silk'
 
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
     private payload: MessageSendPayload['elements'] = []
@@ -95,33 +97,20 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async image(attrs: Dict) {
-        const { data, mime } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
+        const { data, mime, filename } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
         if (mime.includes('text')) {
             this.bot.logger.warn(`try to send an image using a URL that may not be pointing to the image, which is ${attrs.url}`)
         }
         const payload = new FormData()
-        const blob = new Blob([data], { type: mime ?? 'application/octet-stream' })
-        const ext = {
-            'image/jpeg': '.jpg',
-            'image/png': '.png',
-            'image/webp': '.webp',
-            'image/gif': '.gif',
-        }[mime]
-        payload.append('file', blob, 'file' + (ext ?? ''))
+        const blob = new Blob([data], { type: mime || 'application/octet-stream' })
+        payload.append('file', blob, 'file' + extname(filename))
         const res = await this.bot.internal.uploadFile(payload)
 
-        let picType = 1000
-        switch (res.imageInfo.type) {
-            case 'gif':
-                picType = 2000
-                break
-            case 'png':
-                picType = 1001
-                break
-            case 'webp':
-                picType = 1002
-                break
-        }
+        const picType = {
+            gif: 2000,
+            png: 1001,
+            webp: 1002
+        }[res.imageInfo.type] ?? 1000
 
         this.payload.push({
             elementType: 2,
@@ -140,7 +129,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     private async file(attrs: Dict) {
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
         const form = new FormData()
-        const blob = new Blob([data], { type: mime ?? 'application/octet-stream' })
+        const blob = new Blob([data], { type: mime || 'application/octet-stream' })
         form.append('file', blob, filename)
         const res = await this.bot.internal.uploadFile(form)
 
@@ -165,18 +154,20 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         let voice = new Uint8Array(data)
         let duration: number
 
-        const head = (new TextDecoder()).decode(voice.subarray(0, 7))
         let pcm: { data: Uint8Array; sampleRate: number }
+        const { ctx } = this.bot
+        if (!ctx.silk) {
+            throw new Error('发送语音需确保已安装并启用 silk 插件')
+        }
         if (isWavFile(voice)) {
             pcm = wavToPcm(voice)
-        } else if (!head.includes('#!SILK')) {
+        } else if (!toUTF8String(voice, 0, 7).includes('#!SILK')) {
             let data: Buffer
-            const { ffmpeg } = this.bot.ctx
             const input = Buffer.from(voice)
-            if (ffmpeg) {
-                data = await ffmpeg.builder().input(input).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
+            if (ctx.ffmpeg) {
+                data = await ctx.ffmpeg.builder().input(input).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
             } else {
-                data = await audioTransPcm(input)
+                data = await convertToPcm(input)
             }
             pcm = {
                 data,
@@ -184,11 +175,11 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             }
         }
         if (pcm) {
-            const silk = await silkEncode(pcm.data, pcm.sampleRate)
+            const silk = await ctx.silk.encode(pcm.data, pcm.sampleRate)
             voice = silk.data
             duration = Math.round(silk.duration / 1000)
         }
-        duration ||= Math.round((await silkGetDuration(voice)) / 1000)
+        duration ||= Math.round((await ctx.silk.getDuration(voice)) / 1000)
 
         const payload = new FormData()
         const blob = new Blob([voice], { type: 'audio/amr' })
@@ -227,18 +218,60 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
 
         const payload = new FormData()
-        const blob = new Blob([data], { type: mime ?? 'application/octet-stream' })
-        payload.append('file', blob, filename)
+        const blob = new Blob([data], { type: mime || 'application/octet-stream' })
+        payload.append('file', blob, 'file' + extname(filename))
         const file = await this.bot.internal.uploadFile(payload)
+
+        let filePath = file.ntFilePath
+        const fileName = basename(filePath)
+        const isPOSIX = filePath.includes('/')
+        if (!existsSync(filePath.replace(/nt_data.*$/, ''))) {
+            throw new Error('发送视频需确保 Red 与 Koishi 处于同一环境')
+        }
+        if (!filePath.includes('\\nt_data\\Video\\') && !filePath.includes('/nt_data/Video/')) {
+            let newPath: string
+            if (!isPOSIX) {
+                newPath = filePath.replace(/\\nt_data\\(.*?)\\/, '\\nt_data\\Video\\')
+            } else {
+                newPath = filePath.replace(/\/nt_data\/(.*?)\//, '/nt_data/Video/')
+            }
+            const targetFolder = dirname(newPath)
+            if (!existsSync(targetFolder)) {
+                await mkdir(targetFolder)
+            }
+            await rename(filePath, newPath)
+            filePath = newPath
+        }
+        let thumbPath: string
+        if (!isPOSIX) {
+            thumbPath = filePath.replace('\\Ori\\' + fileName, '\\Thumb\\' + fileName)
+        } else {
+            thumbPath = filePath.replace('/Ori/' + fileName, '/Thumb/' + fileName)
+        }
+        thumbPath = thumbPath.replace(fileName, fileName.replace(extname(fileName), '') + '_0.png')
+        const { ctx, logger } = this.bot
+        const input = Buffer.from(data)
+        // Original is JFIF
+        let thumb: Buffer
+        //if (ctx.ffmpeg) {
+        //    thumb = await ctx.ffmpeg.builder().input(input).outputOption('-frames:v', '1', '-f', 'image2', '-codec', 'png', '-update', '1').run('buffer')
+        //} else {
+        logger.info('尝试调用操作系统上安装的 FFmpeg')
+        thumb = await getVideoCover(input)
+        //}
+        await writeFile(thumbPath, thumb)
+        const { height: thumbHeight, width: thumbWidth } = calculatePngSize(thumb)
 
         this.payload.push({
             elementType: 5,
             videoElement: {
-                filePath: file.ntFilePath,
-                fileName: basename(file.ntFilePath),
+                filePath,
+                fileName,
                 videoMd5: file.md5,
-                thumbSize: 750,
                 fileSize: String(file.fileSize),
+                thumbSize: thumb.byteLength,
+                thumbWidth,
+                thumbHeight,
             },
         })
     }
@@ -317,11 +350,11 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 await this.flush()
                 break
             }
-            /*case 'video': {
+            case 'video': {
                 await this.video(attrs)
                 await this.flush()
                 break
-            }*/
+            }
             default: {
                 await this.render(children)
                 break

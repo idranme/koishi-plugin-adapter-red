@@ -30,6 +30,11 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, R
                 }))
             }
 
+            this.bot.dispatch(this.bot.session({
+                type: 'internal',
+                _type: 'red/unsafe-message',
+                _data: parsed.payload[0],
+            }))
             const session = await adaptSession(this.bot, parsed)
             if (session) this.bot.dispatch(session)
         })

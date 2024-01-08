@@ -8,9 +8,8 @@ type ParamCase<S extends string> =
     ? `${L extends '_' ? '-' : Lowercase<L>}${ParamCase<R>}`
     : S
 
-// todo: 4.16.3 added parameter
 type RedEvents = {
-    [T in keyof Red.GatewayEvents as `red/${ParamCase<T>}`]: (input: Red.GatewayEvents[T]) => void
+    [T in keyof Red.GatewayEvents as `red/${ParamCase<T>}`]: (input: Red.GatewayEvents[T], bot: RedBot) => void
 }
 
 declare module '@satorijs/core' {

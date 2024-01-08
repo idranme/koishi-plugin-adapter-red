@@ -6,6 +6,7 @@ import { unlink } from 'fs'
 import { tmpdir } from 'os'
 import { writeFile } from 'fs'
 import { decodeWavFile } from 'wav-file-decoder-cjs'
+import { toUTF8String } from './utils'
 
 const TMP_DIR = tmpdir()
 const NOOP = () => { }
@@ -20,7 +21,7 @@ function saveTmp(data: Buffer, ext?: string): string {
     return tmpPath
 }
 
-export function audioTransPcm(buffer: Buffer, samplingRate = '24000'): Promise<Buffer> {
+export function convertToPcm(buffer: Buffer, samplingRate = '24000'): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         const tmpPath = saveTmp(buffer)
         const pcmPath = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
@@ -30,7 +31,7 @@ export function audioTransPcm(buffer: Buffer, samplingRate = '24000'): Promise<B
                 const pcm = await readFile(pcmPath)
                 resolve(pcm)
             } catch {
-                reject('音频转码失败, 请确保 ffmpeg 已正确安装, 当前仅支持发送 wav 和 silk 格式的语音')
+                reject('音频转码失败, 请确保 ffmpeg 已正确安装, 未安装时仅支持发送 wav 和 silk 格式的语音')
             } finally {
                 unlink(pcmPath, NOOP)
             }
@@ -100,3 +101,35 @@ console.log(floatToSignedInt16(-0.987654321)); // 输出-32440
 console.log(floatToSignedInt16(1)); // 输出32767
 console.log(floatToSignedInt16(-1)); // 输出-32768
 */
+
+export function getVideoCover(input: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        const tmpPath = saveTmp(input)
+        const targetPath = join(TMP_DIR, randomUUID({ disableEntropyCache: true }))
+        exec(`ffmpeg -y -i "${tmpPath}" -frames:v 1 -f image2 -codec png -update 1 "${targetPath}"`, async () => {
+            unlink(tmpPath, NOOP)
+            try {
+                const ret = await readFile(targetPath)
+                resolve(ret)
+            } catch {
+                reject('视频转码失败, 请确保 FFmpeg 已正确安装')
+            } finally {
+                unlink(targetPath, NOOP)
+            }
+        })
+    })
+}
+
+export function calculatePngSize(input: Buffer) {
+    // Detect "fried" png's: http://www.jongware.com/pngdefry.html
+    if (toUTF8String(input, 12, 16) === 'CgBI') {
+        return {
+            height: input.readUInt32BE(36),
+            width: input.readUInt32BE(32)
+        }
+    }
+    return {
+        height: input.readUInt32BE(20),
+        width: input.readUInt32BE(16)
+    }
+}
