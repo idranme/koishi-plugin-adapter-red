@@ -11,23 +11,27 @@ import { } from 'koishi-plugin-ffmpeg'
 import { } from 'koishi-plugin-silk'
 
 export class RedMessageEncoder<C extends Context = Context> extends MessageEncoder<C, RedBot<C>> {
-    private payload: MessageSendPayload['elements'] = []
+    private payload: MessageSendPayload
     private trim = false
 
+    async prepare() {
+        this.payload = { peer: getPeer(this.channelId), elements: [] }
+    }
+
     async flush() {
-        if (this.payload.length === 0) return
+        if (this.payload.elements.length === 0) return
 
         if (this.trim) {
-            const first = this.payload[0]
+            const first = this.payload.elements[0]
             if (first?.elementType === 1 && first?.textElement.atType === 0) {
                 if (first.textElement.content === '\n') {
-                    this.payload.splice(0, 1)
+                    this.payload.elements.splice(0, 1)
                 }
             }
-            const last = this.payload.at(-1)
+            const last = this.payload.elements.at(-1)
             if (last?.elementType === 1 && last?.textElement.atType === 0) {
                 if (last.textElement.content === '\n') {
-                    this.payload.splice(this.payload.length - 1, 1)
+                    this.payload.elements.splice(this.payload.elements.length - 1, 1)
                 } else if (last.textElement.content.endsWith('\n')) {
                     last.textElement.content = last.textElement.content.slice(0, -1)
                 }
@@ -35,13 +39,8 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             this.trim = false
         }
 
-        const peer = getPeer(this.channelId)
-
         if (this.bot.redImplName === 'chronocat') {
-            const res = await this.bot.internal.sendMessage({
-                peer,
-                elements: this.payload
-            })
+            const res = await this.bot.internal.sendMessage(this.payload)
 
             this.bot.seqCache.set(`${res.chatType}/${res.peerUin}/${res.msgSeq}`, res.msgId)
 
@@ -50,23 +49,19 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             this.results.push(session.event.message)
             session.app.emit(session, 'send', session)
         } else {
-            const payload: MessageSendPayload = {
-                peer,
-                elements: this.payload
-            }
             this.bot.internal._wsRequest({
                 type: 'message::send',
-                payload
+                payload: this.payload
             })
 
             this.results.push({ id: '' })
         }
 
-        this.payload = []
+        this.payload.elements = []
     }
 
     private text(content: string) {
-        this.payload.push({
+        this.payload.elements.push({
             elementType: 1,
             textElement: {
                 atType: 0,
@@ -77,7 +72,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private at(attrs: Dict) {
         if (attrs.type === 'all') {
-            this.payload.push({
+            this.payload.elements.push({
                 elementType: 1,
                 textElement: {
                     content: '@全体成员',
@@ -85,7 +80,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 }
             })
         } else {
-            this.payload.push({
+            this.payload.elements.push({
                 elementType: 1,
                 textElement: {
                     content: attrs.name ? '@' + attrs.name : undefined,
@@ -97,9 +92,10 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async image(attrs: Dict) {
-        const { data, mime, filename } = await this.bot.ctx.http.file(attrs.url.toString(), attrs)
+        const url = attrs.src || attrs.url.toString()
+        const { data, mime, filename } = await this.bot.ctx.http.file(url, attrs)
         if (mime.includes('text')) {
-            this.bot.logger.warn(`try to send an image using a URL that may not be pointing to the image, which is ${attrs.url}`)
+            this.bot.logger.warn(`try to send an image using a URL that may not be pointing to the image, which is ${url}`)
         }
         const payload = new FormData()
         const blob = new Blob([data], { type: mime || 'application/octet-stream' })
@@ -112,7 +108,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             webp: 1002
         }[res.imageInfo.type] ?? 1000
 
-        this.payload.push({
+        this.payload.elements.push({
             elementType: 2,
             picElement: {
                 md5HexStr: res.md5,
@@ -127,13 +123,13 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async file(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
         const form = new FormData()
         const blob = new Blob([data], { type: mime || 'application/octet-stream' })
         form.append('file', blob, filename)
         const res = await this.bot.internal.uploadFile(form)
 
-        this.payload.push({
+        this.payload.elements.push({
             elementType: 3,
             fileElement: {
                 fileName: filename,
@@ -146,11 +142,11 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private async face(attrs: Dict) {
         const [faceIndex, faceType, stickerType, packId, stickerId] = attrs.id.split(':')
-        this.payload.push({ elementType: 6, faceElement: { faceIndex, faceType, stickerType, packId, stickerId } })
+        this.payload.elements.push({ elementType: 6, faceElement: { faceIndex, faceType, stickerType, packId, stickerId } })
     }
 
     private async audio(attrs: Dict) {
-        const { data } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const { data } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
         let voice = new Uint8Array(data)
         let duration: number
 
@@ -186,7 +182,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         payload.append('file', blob, 'file.amr')
         const file = await this.bot.internal.uploadFile(payload)
 
-        this.payload.push({
+        this.payload.elements.push({
             elementType: 4,
             pttElement: {
                 md5HexStr: file.md5,
@@ -204,7 +200,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private quote(attrs: Dict) {
         const senderUin = this.bot.selfId
-        this.payload.push({
+        this.payload.elements.push({
             elementType: 7,
             replyElement: {
                 replayMsgId: attrs.id,
@@ -215,7 +211,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async video(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.url, attrs)
+        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
 
         const payload = new FormData()
         const blob = new Blob([data], { type: mime || 'application/octet-stream' })
@@ -262,7 +258,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         await writeFile(thumbPath, thumb)
         const { height: thumbHeight, width: thumbWidth } = calculatePngSize(thumb)
 
-        this.payload.push({
+        this.payload.elements.push({
             elementType: 5,
             videoElement: {
                 filePath,
@@ -293,6 +289,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 this.at(attrs)
                 break
             }
+            case 'img':
             case 'image': {
                 await this.image(attrs)
                 break
@@ -308,7 +305,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             }
             case 'p': {
                 this.trim = true
-                const prev = this.payload.at(-1)
+                const prev = this.payload.elements.at(-1)
                 if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
                     if (!prev.textElement.content.endsWith('\n')) {
                         prev.textElement.content += '\n'
@@ -317,7 +314,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                     this.text('\n')
                 }
                 await this.render(children)
-                const last = this.payload.at(-1)
+                const last = this.payload.elements.at(-1)
                 if (last?.elementType === 1 && last?.textElement.atType === 0) {
                     if (!last.textElement.content.endsWith('\n')) {
                         last.textElement.content += '\n'
@@ -328,7 +325,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 break
             }
             case 'br': {
-                const prev = this.payload.at(-1)
+                const prev = this.payload.elements.at(-1)
                 if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
                     prev.textElement.content += '\n'
                 } else {
