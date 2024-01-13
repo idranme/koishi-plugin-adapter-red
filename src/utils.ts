@@ -111,7 +111,8 @@ export async function decodeMessage(
                     break
                 }
                 case 4: {
-                    newElement = h.audio(bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr))
+                    const url = bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr)
+                    newElement = h.audio(url, { duration: v.pttElement.duration })
                     break
                 }
                 case 5: {
@@ -152,8 +153,23 @@ export async function decodeMessage(
         return result
     }
 
-    message.elements = await parse(data)
-    message.content = message.elements.join('')
+    const elements = await parse(data)
+    if (bot.config.splitMixedContent) {
+        for (const [index, item] of elements.entries()) {
+            if (item.type !== 'img') continue
+            const left = elements[index - 1]
+            if (left?.type === 'text' && left.attrs.content.trimEnd() === left.attrs.content) {
+                left.attrs.content += ' '
+            }
+            const right = elements[index + 1]
+            if (right?.type === 'text' && right.attrs.content.trimStart() === right.attrs.content) {
+                right.attrs.content = ' ' + right.attrs.content
+            }
+        }
+    }
+
+    message.elements = elements
+    message.content = elements.join('')
 
     if (!payload) return message
 

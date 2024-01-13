@@ -132,6 +132,7 @@ export namespace RedBot {
         selfId: string
         path: string
         selfUrl: string
+        splitMixedContent: boolean
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -145,5 +146,8 @@ export namespace RedBot {
         }).description('资源设置'),
         WsClient.Config,
         Quester.createConfig('http://127.0.0.1:16530'),
+        Schema.object({
+            splitMixedContent: Schema.boolean().default(false).description('是否自动在接收到的混合内容间插入空格。')
+        }).description('高级设置'),
     ])
 }
