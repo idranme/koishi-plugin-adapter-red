@@ -2,8 +2,6 @@ import { Quester } from 'koishi'
 import * as Red from './types'
 
 export class Internal {
-    _wsRequest?<P extends object>(data: Red.WsPackage<P>): void
-
     constructor(private http: () => Quester) { }
 
     uploadFile(file: FormData) {

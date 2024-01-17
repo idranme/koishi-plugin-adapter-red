@@ -1,7 +1,7 @@
 import { Adapter, Schema, Context } from 'koishi'
 import { RedBot } from './bot'
 import { adaptSession, decodeUser } from './utils'
-import { WsPackage, MetaConnectResponse } from './types'
+import { MetaConnectResponse } from './types'
 
 export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, RedBot<C>> {
     async prepare() {
@@ -19,7 +19,6 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, R
                 if (selfId !== currAccount) {
                     return this.socket.close(1008, `configured selfId is ${selfId}, but the currently connected account is ${currAccount}`)
                 }
-                this.bot.redImplName = payload.name
                 this.bot.user = decodeUser(await this.bot.internal.getMe())
                 return this.bot.online()
             } else if (parsed.type === 'message::poke') {
@@ -39,16 +38,12 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, R
             if (session) this.bot.dispatch(session)
         })
 
-        this.bot.internal._wsRequest = <P extends object>(data: WsPackage<P>) => {
-            this.socket.send(JSON.stringify(data))
-        }
-
-        this.bot.internal._wsRequest({
+        this.socket.send(JSON.stringify({
             type: 'meta::connect',
             payload: {
                 token: this.bot.config.token
             }
-        })
+        }))
     }
 }
 

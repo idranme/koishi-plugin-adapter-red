@@ -8,13 +8,12 @@ import { Internal } from './internal'
 
 export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static inject = {
-        required: ['server'],
+        required: ['server', 'http'],
         optional: ['ffmpeg', 'silk']
     }
     static MessageEncoder = RedMessageEncoder
     http: Quester
     internal: Internal
-    redImplName: string
     seqCache = new Map()
     redAssets: RedAssets
 

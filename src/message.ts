@@ -39,23 +39,14 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             this.trim = false
         }
 
-        if (this.bot.redImplName === 'chronocat') {
-            const res = await this.bot.internal.sendMessage(this.payload)
+        const res = await this.bot.internal.sendMessage(this.payload)
 
-            this.bot.seqCache.set(`${res.chatType}/${res.peerUin}/${res.msgSeq}`, res.msgId)
+        this.bot.seqCache.set(`${res.chatType}/${res.peerUin}/${res.msgSeq}`, res.msgId)
 
-            const session = this.bot.session()
-            await decodeMessage(this.bot, res, session.event.message = {}, session.event)
-            this.results.push(session.event.message)
-            session.app.emit(session, 'send', session)
-        } else {
-            this.bot.internal._wsRequest({
-                type: 'message::send',
-                payload: this.payload
-            })
-
-            this.results.push({ id: '' })
-        }
+        const session = this.bot.session()
+        await decodeMessage(this.bot, res, session.event.message = {}, session.event)
+        this.results.push(session.event.message)
+        session.app.emit(session, 'send', session)
 
         this.payload.elements = []
     }
