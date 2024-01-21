@@ -27,6 +27,15 @@ export interface ResultResponse {
     errMsg: string
 }
 
+export interface GroupKickResponse {
+    errCode: number
+    errMsg: string
+    resultList: {
+        uid: string
+        result: number
+    }[]
+}
+
 export interface MetaConnectResponse {
     version: string
     name: 'red-protocol' | 'chronocat'

@@ -9,7 +9,7 @@ export class Internal {
     }
 
     removeGroupMembers(data: Red.GroupKickPayload) {
-        return this.http().post<Red.ResultResponse>('/group/kick', data)
+        return this.http().post<Red.GroupKickResponse>('/group/kick', data)
     }
 
     getGroupMembers(data: Red.GroupGetMemeberListPayload) {

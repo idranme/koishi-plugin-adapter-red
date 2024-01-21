@@ -45,12 +45,21 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async kickGuildMember(guildId: string, userId: string, permanent?: boolean) {
-        await this.internal.removeGroupMembers({
+        const res = await this.internal.removeGroupMembers({
             group: guildId,
             uidList: [userId],
             refuseForever: permanent,
             reason: ''
         })
+        if (res.errCode !== 0) {
+            if (res.errCode === 316) {
+                throw new Error('user code is invaild')
+            }
+            throw new Error(res.errMsg)
+        }
+        if (res.resultList[0]?.result !== 0) {
+            throw new Error('unknown anomaly')
+        }
     }
 
     async getGuildMemberList(guildId: string, _next?: string) {
@@ -79,13 +88,22 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async muteGuildMember(guildId: string, userId: string, duration?: number, reason?: string) {
-        await this.internal.muteGroupMembers({
+        const res = await this.internal.muteGroupMembers({
             group: guildId,
             memList: [{
                 uin: userId,
                 timeStamp: + (duration / 1000).toFixed(0)
             }]
         })
+        if (res.result === 316) {
+            throw new Error('USERID_IS_INVAILD')
+        }
+        if (res.result !== 0) {
+            if (res.errMsg.startsWith('ERR_')) {
+                throw new Error(res.errMsg.replace('ERR_', ''))
+            }
+            throw new Error('UNKNOWN_ANOMALY')
+        }
     }
 
     async getFriendList(_next?: string) {
