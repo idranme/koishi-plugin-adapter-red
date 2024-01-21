@@ -85,7 +85,7 @@ export async function decodeMessage(
                     break
                 }
                 case 2: {
-                    const { originImageUrl, picType, fileName, md5HexStr, picWidth, picHeight } = v.picElement
+                    const { originImageUrl, picType, fileName, md5HexStr, picWidth, picHeight, picSubType } = v.picElement
                     let mime = {
                         1000: 'image/jpeg',
                         1001: 'image/png',
@@ -102,7 +102,8 @@ export async function decodeMessage(
                     url ||= bot.redAssets.set(data, v.elementId, mime, md5HexStr)
                     newElement = h.image(url, {
                         width: picWidth,
-                        height: picHeight
+                        height: picHeight,
+                        'red:face': picSubType === 1
                     })
                     break
                 }

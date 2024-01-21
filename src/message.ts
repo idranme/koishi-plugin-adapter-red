@@ -209,19 +209,13 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         payload.append('file', blob, 'file' + extname(filename))
         const file = await this.bot.internal.uploadFile(payload)
 
-        let filePath = file.ntFilePath
+        let filePath = file.ntFilePath.replaceAll('\\', '/')
         const fileName = basename(filePath)
-        const isPOSIX = filePath.includes('/')
-        if (!existsSync(filePath.replace(/nt_data.*$/, ''))) {
+        if (!existsSync(filePath)) {
             throw new Error('发送视频需确保 Red 与 Koishi 处于同一环境')
         }
-        if (!filePath.includes('\\nt_data\\Video\\') && !filePath.includes('/nt_data/Video/')) {
-            let newPath: string
-            if (!isPOSIX) {
-                newPath = filePath.replace(/\\nt_data\\(.*?)\\/, '\\nt_data\\Video\\')
-            } else {
-                newPath = filePath.replace(/\/nt_data\/(.*?)\//, '/nt_data/Video/')
-            }
+        if (!filePath.includes('/nt_data/Video/')) {
+            const newPath = filePath.replace(/\/nt_data\/(.*?)\//, '/nt_data/Video/')
             const targetFolder = dirname(newPath)
             if (!existsSync(targetFolder)) {
                 await mkdir(targetFolder)
@@ -229,12 +223,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             await rename(filePath, newPath)
             filePath = newPath
         }
-        let thumbPath: string
-        if (!isPOSIX) {
-            thumbPath = filePath.replace('\\Ori\\' + fileName, '\\Thumb\\' + fileName)
-        } else {
-            thumbPath = filePath.replace('/Ori/' + fileName, '/Thumb/' + fileName)
-        }
+        let thumbPath = filePath.replace('/Ori/' + fileName, '/Thumb/' + fileName)
         thumbPath = thumbPath.replace(fileName, fileName.replace(extname(fileName), '') + '_0.png')
         const { ctx, logger } = this.bot
         const input = Buffer.from(data)
