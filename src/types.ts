@@ -307,12 +307,41 @@ export interface Element {
     marketFaceElement?: unknown
     multiForwardMsgElement?: unknown
     pttElement?: PttElement
-    replyElement?: unknown
+    replyElement?: ReplyElement
     structLongMsgElement?: unknown
     textGiftElement?: unknown
     videoElement?: VideoElement
     walletElement?: unknown
     yoloGameResultElement?: unknown
+}
+
+export interface ReplyElement {
+    replayMsgId: string
+    replayMsgSeq: string
+    replayMsgRootSeq: string
+    replayMsgRootMsgId: string
+    replayMsgRootCommentCnt: string
+    sourceMsgIdInRecords: string
+    sourceMsgText: string
+    sourceMsgTextElems: {
+        replyAbsElemType: 1 | 2
+        textElemContent?: string
+        faceElem?: {
+            faceIndex: number
+            faceText: unknown
+            faceType: number
+        }
+    }[]
+    senderUid: string
+    replyMsgClientSeq: string
+    replyMsgTime: string
+    replyMsgRevokeType: number
+    sourceMsgIsIncPic: boolean
+    sourceMsgExpired: boolean
+    anonymousNickName: unknown
+    originalMsgState: unknown
+    senderUin: string
+    senderUinStr: string
 }
 
 export interface PicElement {

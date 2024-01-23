@@ -131,7 +131,7 @@ export async function decodeMessage(
                 }
                 case 7: {
                     if (skipQuoteElement) continue
-                    const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement as Dict
+                    const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement
                     const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
                     if (msgId) {
                         const record = data.records[0]
@@ -281,4 +281,6 @@ export function getPeer(channelId: string): Peer {
     }
 }
 
-export const toUTF8String = (input: Uint8Array, start = 0, end = input.length) => (new TextDecoder()).decode(input.slice(start, end))
+export function toUTF8String(input: ArrayBuffer, start = 0, end = input.byteLength) {
+    return (new TextDecoder()).decode(input.slice(start, end))
+}

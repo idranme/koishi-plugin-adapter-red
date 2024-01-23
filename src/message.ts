@@ -1,10 +1,9 @@
 import { Dict, h, MessageEncoder, Context } from 'koishi'
 import { RedBot } from './bot'
 import { MessageSendPayload } from './types'
-import { convertToPcm, wavToPcm, getVideoCover, calculatePngSize } from './media'
+import { convertToPcm, getVideoCover, calculatePngSize } from './media'
 import { basename, dirname, extname } from 'node:path'
 import { decodeMessage, getPeer, toUTF8String } from './utils'
-import { isWavFile } from 'wav-file-decoder-cjs'
 import { rename, mkdir, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { } from 'koishi-plugin-ffmpeg'
@@ -138,16 +137,17 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private async audio(attrs: Dict) {
         const { data } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
-        let voice = new Uint8Array(data)
+        let voice: ArrayBuffer | Uint8Array = data
         let duration: number
 
-        let pcm: { data: Uint8Array; sampleRate: number }
         const { ctx } = this.bot
         if (!ctx.silk) {
             throw new Error('发送语音需确保已安装并启用 silk 插件')
         }
-        if (isWavFile(voice)) {
-            pcm = wavToPcm(voice)
+        if (ctx.silk.isWav(voice)) {
+            const silk = await ctx.silk.encode(voice, 0)
+            voice = silk.data
+            duration = Math.round(silk.duration / 1000)
         } else if (!toUTF8String(voice, 0, 7).includes('#!SILK')) {
             let data: Buffer
             const input = Buffer.from(voice)
@@ -156,13 +156,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             } else {
                 data = await convertToPcm(input)
             }
-            pcm = {
-                data,
-                sampleRate: 24000
-            }
-        }
-        if (pcm) {
-            const silk = await ctx.silk.encode(pcm.data, pcm.sampleRate)
+            const silk = await ctx.silk.encode(data, 24000)
             voice = silk.data
             duration = Math.round(silk.duration / 1000)
         }
@@ -229,12 +223,11 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         const input = Buffer.from(data)
         // Original is JFIF
         let thumb: Buffer
-        //if (ctx.ffmpeg) {
-        //    thumb = await ctx.ffmpeg.builder().input(input).outputOption('-frames:v', '1', '-f', 'image2', '-codec', 'png', '-update', '1').run('buffer')
-        //} else {
-        logger.info('尝试调用操作系统上安装的 FFmpeg')
-        thumb = await getVideoCover(input)
-        //}
+        if (ctx.ffmpeg) {
+            thumb = await ctx.ffmpeg.builder().input(input).outputOption('-frames:v', '1', '-f', 'image2', '-codec', 'png', '-update', '1').run('buffer')
+        } else {
+            thumb = await getVideoCover(input)
+        }
         await writeFile(thumbPath, thumb)
         const { height: thumbHeight, width: thumbWidth } = calculatePngSize(thumb)
 
