@@ -301,9 +301,9 @@ export interface Element {
     fileElement?: FileElement
     giphyElement?: unknown
     grayTipElement?: GrayTipElement
-    inlineKeyboardElement?: unknown
+    inlineKeyboardElement?: InlineKeyboardElement
     liveGiftElement?: unknown
-    markdownElement?: unknown
+    markdownElement?: MarkdownElement
     marketFaceElement?: unknown
     multiForwardMsgElement?: unknown
     pttElement?: PttElement
@@ -313,6 +313,34 @@ export interface Element {
     videoElement?: VideoElement
     walletElement?: unknown
     yoloGameResultElement?: unknown
+}
+
+export interface MarkdownElement {
+    content: string
+}
+
+export interface InlineKeyboardElement {
+    rows: {
+        buttons: {
+            id: string
+            label: string
+            visitedLabel: string
+            style: number
+            type: number
+            clickLimit: number
+            unsupportTips: string
+            data: string
+            atBotShowChannelList: boolean
+            permissionType: number
+            specifyRoleIds: unknown[]
+            specifyTinyids: unknown[]
+            isReply: boolean
+            anchor: number
+            enter: boolean
+            subscribeDataTemplateIds: unknown[]
+        }[]
+    }[]
+    botAppid: string
 }
 
 export interface ReplyElement {

@@ -130,7 +130,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         })
     }
 
-    private async face(attrs: Dict) {
+    private face(attrs: Dict) {
         const [faceIndex, faceType, stickerType, packId, stickerId] = attrs.id.split(':')
         this.payload.elements.push({ elementType: 6, faceElement: { faceIndex, faceType, stickerType, packId, stickerId } })
     }
@@ -279,7 +279,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             case 'p': {
                 this.trim = true
                 const prev = this.payload.elements.at(-1)
-                if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
+                if (prev?.elementType === 1 && prev.textElement.atType === 0) {
                     if (!prev.textElement.content.endsWith('\n')) {
                         prev.textElement.content += '\n'
                     }
@@ -288,7 +288,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 }
                 await this.render(children)
                 const last = this.payload.elements.at(-1)
-                if (last?.elementType === 1 && last?.textElement.atType === 0) {
+                if (last?.elementType === 1 && last.textElement.atType === 0) {
                     if (!last.textElement.content.endsWith('\n')) {
                         last.textElement.content += '\n'
                     }
@@ -299,7 +299,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             }
             case 'br': {
                 const prev = this.payload.elements.at(-1)
-                if (prev?.elementType === 1 && prev?.textElement.atType === 0) {
+                if (prev?.elementType === 1 && prev.textElement.atType === 0) {
                     prev.textElement.content += '\n'
                 } else {
                     this.text('\n')
@@ -323,6 +323,14 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             case 'video': {
                 await this.video(attrs)
                 await this.flush()
+                break
+            }
+            case 'a': {
+                await this.render(children)
+                const prev = this.payload.elements.at(-1)
+                if (prev?.elementType === 1 && prev.textElement.atType === 0) {
+                    prev.textElement.content += ` (${attrs.href})`
+                }
                 break
             }
             default: {

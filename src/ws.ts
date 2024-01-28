@@ -17,12 +17,12 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, R
                 const selfId = this.bot.selfId
                 const currAccount = payload.authData.uin
                 if (selfId !== currAccount) {
-                    return this.socket.close(1008, `configured selfId is ${selfId}, but the currently connected account is ${currAccount}`)
+                    return this.socket.close(1008, `configured selfId is ${selfId}, but connected account is ${currAccount}`)
                 }
                 this.bot.user = decodeUser(await this.bot.internal.getMe())
                 return this.bot.online()
             } else if (parsed.type === 'message::poke') {
-                this.bot.dispatch(this.bot.session({
+                return this.bot.dispatch(this.bot.session({
                     type: 'internal',
                     _type: 'red/unsafe-notify',
                     _data: parsed.payload[0],
