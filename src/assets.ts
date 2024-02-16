@@ -6,11 +6,11 @@ import { } from '@koishijs/plugin-server'
 export class RedAssets<C extends Context = Context> {
     private path: string
     constructor(private bot: RedBot<C>, private config: RedBot.Config) {
-        const num = Number(this.bot.selfId) || 0
+        const num = Number(bot.selfId) || 0
         const unique = num.toString(32)
-        this.path = sanitize(`${this.config.path || '/files'}/${unique}`)
-        this.bot.logger.info(`assets are located at ${this.selfUrl}${this.path}`)
+        this.path = sanitize(`${config.path || '/files'}/${unique}`)
         this.listen()
+        bot.logger.info(`assets are located at ${this.selfUrl}${this.path}`)
     }
     set(message: Message, elementId: string, mime: string, md5: string) {
         const payload = Buffer.from(JSON.stringify({

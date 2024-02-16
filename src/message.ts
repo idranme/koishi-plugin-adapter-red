@@ -84,7 +84,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     private async image(attrs: Dict) {
         const url = attrs.src || attrs.url.toString()
         const { data, mime, filename } = await this.bot.ctx.http.file(url, attrs)
-        if (mime.includes('text')) {
+        if (mime?.includes('text')) {
             this.bot.logger.warn(`try to send an image using a URL that may not be pointing to the image, which is ${url}`)
         }
         const payload = new FormData()
