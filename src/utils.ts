@@ -1,5 +1,5 @@
 import { Message, Group, Profile, Peer, Member, WsPackage } from './types'
-import { Universal, h, Dict } from 'koishi'
+import { Universal, h, Session } from 'koishi'
 import { RedBot } from './bot'
 import { extname } from 'node:path'
 
@@ -54,7 +54,7 @@ export const decodeEventGuild = (id: string, name: string): Universal.Guild => (
     avatar: `https://p.qlogo.cn/gh/${id}/${id}/640`
 })
 
-export const decodeEventChannel = (channelId: string, guildId: string | undefined, name?: string): Universal.Channel => ({
+export const decodeEventChannel = (channelId: string, guildId?: string, name?: string): Universal.Channel => ({
     id: channelId,
     name,
     type: guildId ? Universal.Channel.Type.TEXT : Universal.Channel.Type.DIRECT
@@ -96,8 +96,10 @@ export async function decodeMessage(
                         '.jpg': 'image/jpeg'
                     }[extname(fileName)] ?? 'application/octet-stream'
                     let url: string
-                    if (originImageUrl && !originImageUrl.includes('&rkey')) {
+                    if (originImageUrl?.startsWith('/gchatpic_new')) {
                         url = `https://c2cpicdw.qpic.cn${originImageUrl}`
+                    } else if (originImageUrl?.startsWith('/download')) {
+                        url = `https://multimedia.nt.qq.com.cn${originImageUrl}`
                     }
                     url ||= bot.redAssets.set(data, v.elementId, mime, md5HexStr)
                     newElement = h.image(url, {
@@ -195,12 +197,25 @@ const decodeGuildChannelId = (data: Message) => {
     }
 }
 
+export function setupGuildChannel(session: Session, data: Message, name?: string) {
+    const [guildId, channelId] = decodeGuildChannelId(data)
+    session.event.guild = guildId && decodeEventGuild(guildId, name ?? data.peerName)
+    session.event.channel = decodeEventChannel(channelId, guildId, name ?? data.peerName)
+}
+
 export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
     const session = bot.session()
-    if (input.type !== 'message::recv') return
-    if (input.payload.length === 0) return
 
+    if (input.payload.length === 0) return
     const data = input.payload[0]
+
+    if (input.type === 'message::deleted') {
+        session.type = 'message-deleted'
+        session.messageId = data.msgId
+        setupGuildChannel(session, data)
+        return session
+    }
+    if (input.type !== 'message::recv') return
 
     bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
 
@@ -219,11 +234,7 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
         }
     }
 
-    const [guildId, channelId] = decodeGuildChannelId(data)
-
     session.timestamp = +data.msgTime * 1000
-    session.event.channel = decodeEventChannel(channelId, guildId)
-
     if (data.msgType === 5 && data.subMsgType === 8) {
         const { type, memberUin, groupName, memberNick, adminUin } = data.elements[0].grayTipElement.groupElement
         if (type === 1) {
@@ -234,14 +245,14 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
                 name: memberNick,
                 avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${memberUin}&spec=640`
             }
-            session.guildId = guildId
+            setupGuildChannel(session, data)
         } else if (type === 5) {
             session.type = 'guild-updated'
-            session.event.guild = decodeEventGuild(guildId, groupName)
             session.event.operator = {
                 id: memberUin,
                 name: memberNick
             }
+            setupGuildChannel(session, data, groupName)
         } else {
             return
         }
@@ -256,7 +267,7 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
             id: uins[1],
             avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${uins[1]}&spec=640`
         }
-        session.guildId = guildId
+        setupGuildChannel(session, data)
     } else {
         return
     }

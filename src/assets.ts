@@ -53,7 +53,7 @@ export class RedAssets<C extends Context = Context> {
                 payload = JSON.parse(Buffer.from(data, 'base64url').toString())
             }
             const mime = payload.mime
-            let response: Quester.AxiosResponse
+            let response
             try {
                 response = await this.get(payload)
             } catch (e) {
