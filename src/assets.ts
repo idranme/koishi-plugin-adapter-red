@@ -65,13 +65,17 @@ export class RedAssets<C extends Context = Context> {
                 }
                 response ||= e.response
             }
-            ctx.body = response.data
-            ctx.type = response.headers['content-type']
-            if (!ctx.type && response.status === 200) {
+
+            const { headers } = response
+            const contentType = headers instanceof Headers ? headers.get('content-type') : headers['content-type']
+
+            ctx.status = response.status
+            if (contentType) {
+                ctx.type = contentType
+            } else if (response.status === 200) {
                 ctx.type = mime
             }
-            ctx.header['date'] = response.headers['date']
-            ctx.status = response.status
+            ctx.body = Buffer.from(response.data)
         })
     }
 }
