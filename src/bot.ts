@@ -14,7 +14,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
     http: Quester
     internal: Internal
-    seqCache = new Map()
+    redSeq = new Map()
     redAssets: RedAssets
 
     constructor(ctx: C, config: RedBot.Config) {
@@ -22,13 +22,12 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         this.selfId = config.selfId
         this.http = ctx.http.extend({
             ...config,
-            endpoint: trimSlash(config.endpoint) + '/api',
             headers: {
                 Authorization: `Bearer ${config.token}`,
                 ...config.headers,
             },
         })
-        this.internal = new Internal(() => this.http)
+        this.internal = new Internal(this.http)
         setTimeout(() => {
             this.redAssets = new RedAssets(this, config)
         }, 0)
@@ -144,7 +143,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
 }
 
 export namespace RedBot {
-    export interface Config extends Quester.Config, WsClient.Config {
+    export interface Config extends Quester.Config, WsClient.Options {
         token: string
         selfId: string
         path: string
@@ -161,8 +160,8 @@ export namespace RedBot {
             path: Schema.string().default('/red_assets').description('静态资源（如图片）暴露在服务器的路径。'),
             selfUrl: Schema.string().role('link').description('Koishi 服务暴露在公网的地址。缺省时将使用全局配置。')
         }).description('资源设置'),
-        WsClient.Config,
-        Quester.createConfig('http://127.0.0.1:16530'),
+        WsClient.Options,
+        Quester.createConfig('http://127.0.0.1:16530/'),
         Schema.object({
             splitMixedContent: Schema.boolean().default(false).description('是否自动在接收到的混合内容间插入空格。')
         }).description('高级设置'),

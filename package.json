@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
   "description": "Red Protocol Adapter for Koishi",
-  "version": "2.9.9",
+  "version": "3.0.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -31,12 +31,12 @@
     "url": "https://github.com/idanran"
   },
   "peerDependencies": {
-    "koishi": "^4.16.4"
+    "koishi": "^4.17.0"
   },
   "devDependencies": {
-    "@koishijs/plugin-server": "^3.1.7",
+    "@koishijs/plugin-server": "^3.1.8",
     "koishi-plugin-ffmpeg": "^1.1.0",
-    "koishi-plugin-silk": "^0.2.0"
+    "koishi-plugin-silk": "^0.2.1"
   },
   "koishi": {
     "description": {

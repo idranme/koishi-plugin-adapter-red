@@ -134,7 +134,7 @@ export async function decodeMessage(
                 case 7: {
                     if (skipQuoteElement) continue
                     const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement
-                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.seqCache.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
+                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.redSeq.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
                     if (msgId) {
                         const record = data.records[0]
                         const elements = record && await parse(record, true)
@@ -217,7 +217,7 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
     }
     if (input.type !== 'message::recv') return
 
-    bot.seqCache.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
+    bot.redSeq.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
 
     switch (data.msgType) {
         case 2:

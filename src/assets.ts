@@ -53,21 +53,23 @@ export class RedAssets<C extends Context = Context> {
                 payload = JSON.parse(Buffer.from(data, 'base64url').toString())
             }
             const mime = payload.mime
-            let response
+            let response: Quester.Response<ArrayBuffer>
             try {
                 response = await this.get(payload)
             } catch (e) {
                 if (mime.includes('image')) {
-                    response = await this.bot.ctx.http.axios(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${payload.md5.toUpperCase()}/0`, {
-                        method: 'GET',
-                        responseType: 'arraybuffer'
-                    })
+                    try {
+                        response = await this.bot.ctx.http(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${payload.md5.toUpperCase()}/0`, {
+                            method: 'GET',
+                            responseType: 'arraybuffer'
+                        })
+                    } catch { }
                 }
                 response ||= e.response
             }
 
             const { headers } = response
-            const contentType = headers instanceof Headers ? headers.get('content-type') : headers['content-type']
+            const contentType = headers.get('content-type')
 
             ctx.status = response.status
             if (contentType) {

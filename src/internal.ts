@@ -2,50 +2,50 @@ import { Quester } from 'koishi'
 import * as Red from './types'
 
 export class Internal {
-    constructor(private http: () => Quester) { }
+    constructor(private http: Quester) { }
 
     uploadFile(file: FormData) {
-        return this.http().post<Red.UploadResponse>('/upload', file)
+        return this.http.post<Red.UploadResponse>('/api/upload', file)
     }
 
     removeGroupMembers(data: Red.GroupKickPayload) {
-        return this.http().post<Red.GroupKickResponse>('/group/kick', data)
+        return this.http.post<Red.GroupKickResponse>('/api/group/kick', data)
     }
 
     getGroupMembers(data: Red.GroupGetMemeberListPayload) {
-        return this.http().post<any[]>('/group/getMemberList', data)
+        return this.http.post<any[]>('/api/group/getMemberList', data)
     }
 
     muteGroupMembers(data: Red.GroupMuteMemberPayload) {
-        return this.http().post<Red.ResultResponse>('/group/muteMember', data)
+        return this.http.post<Red.ResultResponse>('/api/group/muteMember', data)
     }
 
     getMe() {
-        return this.http().get<Red.Profile>('/getSelfProfile')
+        return this.http.get<Red.Profile>('/api/getSelfProfile')
     }
 
     getGroups() {
-        return this.http().get<Red.GetGroupsResponse>('/bot/groups')
+        return this.http.get<Red.GetGroupsResponse>('/api/bot/groups')
     }
 
     getFriends() {
-        return this.http().get<Red.GetFriendsResponse>('/bot/friends')
+        return this.http.get<Red.GetFriendsResponse>('/api/bot/friends')
     }
 
     deleteMessages(data: Red.MessageRecallPayload) {
-        return this.http().post<Red.ResultResponse>('/message/recall', data)
+        return this.http.post<Red.ResultResponse>('/api/message/recall', data)
     }
 
     getMessages(data: Red.MessageGetHistoryPayload) {
-        return this.http().post('/message/getHistory', data)
+        return this.http.post('/api/message/getHistory', data)
     }
 
     sendMessage(data: Red.MessageSendPayload) {
-        return this.http().post<Red.Message>('/message/send', data)
+        return this.http.post<Red.Message>('/api/message/send', data)
     }
 
     getFile(data: Red.MessageFetchRichMediaPayload) {
-        return this.http().axios('/message/fetchRichMedia', {
+        return this.http<ArrayBuffer>('/api/message/fetchRichMedia', {
             method: 'POST',
             data,
             responseType: 'arraybuffer'
@@ -53,6 +53,6 @@ export class Internal {
     }
 
     muteGroup(data: Red.GroupMuteEveryonePayload) {
-        return this.http().post('/group/muteEveryone', data)
+        return this.http.post('/api/group/muteEveryone', data)
     }
 }
