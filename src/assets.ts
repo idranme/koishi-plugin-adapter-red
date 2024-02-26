@@ -56,7 +56,10 @@ export class RedAssets<C extends Context = Context> {
             let response: Quester.Response<ArrayBuffer>
             try {
                 response = await this.get(payload)
-            } catch (e) {
+            } catch (err) {
+                if (!Quester.Error.is(err)) {
+                    throw err
+                }
                 if (mime.includes('image')) {
                     try {
                         response = await this.bot.ctx.http(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${payload.md5.toUpperCase()}/0`, {
@@ -65,7 +68,7 @@ export class RedAssets<C extends Context = Context> {
                         })
                     } catch { }
                 }
-                response ||= e.response
+                response ||= err.response
             }
 
             const { headers } = response

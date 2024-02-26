@@ -219,7 +219,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         }
         let thumbPath = filePath.replace('/Ori/' + fileName, '/Thumb/' + fileName)
         thumbPath = thumbPath.replace(fileName, fileName.replace(extname(fileName), '') + '_0.png')
-        const { ctx, logger } = this.bot
+        const { ctx } = this.bot
         const input = Buffer.from(data)
         // Original is JFIF
         let thumb: Buffer

@@ -110,6 +110,15 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         return { data: res.map(decodeUser) }
     }
 
+    async getUser(userId: string) {
+        //const res = await this.internal.getFriends()
+        //const user = res.find((element) => element.uin === userId)
+        return {
+            id: userId,
+            avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${userId}&spec=640`
+        }
+    }
+
     async getMessageList(channelId: string, next?: string) {
         const res = await this.internal.getMessages({
             peer: getPeer(channelId),
