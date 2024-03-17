@@ -160,7 +160,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             voice = silk.data
             duration = Math.round(silk.duration / 1000)
         }
-        duration ||= Math.round((await ctx.silk.getDuration(voice)) / 1000)
+        duration ||= Math.round(ctx.silk.getDuration(voice) / 1000)
 
         const payload = new FormData()
         const blob = new Blob([voice], { type: 'audio/amr' })

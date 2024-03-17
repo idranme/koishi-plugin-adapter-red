@@ -162,7 +162,7 @@ export namespace RedBot {
 
     export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
-            token: Schema.string().description('用户令牌。').role('secret').required(),
+            token: Schema.string().description('API 访问令牌。').role('secret').required(),
             selfId: Schema.string().description('机器人的账号。').required(),
         }),
         Schema.object({
