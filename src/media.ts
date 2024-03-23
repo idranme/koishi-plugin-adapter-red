@@ -30,7 +30,7 @@ export function convertToPcm(buffer: Buffer, samplingRate = '24000'): Promise<Bu
                 const pcm = await readFile(pcmPath)
                 resolve(pcm)
             } catch {
-                reject('音频转码失败, 请确保 ffmpeg 已正确安装, 未安装时仅支持发送 wav 和 silk 格式的语音')
+                reject('音频转码失败, 请确保 ffmpeg 已正确安装, 否则仅能发送受支持的 wav 和 silk 格式的语音')
             } finally {
                 unlink(pcmPath, NOOP)
             }

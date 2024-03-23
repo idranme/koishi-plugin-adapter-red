@@ -87,27 +87,27 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         if (mime?.includes('text')) {
             this.bot.logger.warn(`try to send an image using a URL that may not be pointing to the image, which is ${url}`)
         }
-        const payload = new FormData()
+        const form = new FormData()
         const blob = new Blob([data], { type: mime || 'application/octet-stream' })
-        payload.append('file', blob, 'file' + extname(filename))
-        const res = await this.bot.internal.uploadFile(payload)
+        form.append('file', blob, 'file' + extname(filename))
+        const file = await this.bot.internal.uploadFile(form)
 
         const picType = {
             gif: 2000,
             png: 1001,
             webp: 1002
-        }[res.imageInfo.type] ?? 1000
+        }[file.imageInfo.type] ?? 1000
 
         this.payload.elements.push({
             elementType: 2,
             picElement: {
-                md5HexStr: res.md5,
-                fileSize: String(res.fileSize),
-                fileName: basename(res.ntFilePath),
-                sourcePath: res.ntFilePath,
-                picHeight: res.imageInfo.height,
-                picWidth: res.imageInfo.width,
-                picType,
+                md5HexStr: file.md5,
+                fileSize: String(file.fileSize),
+                fileName: basename(file.ntFilePath),
+                sourcePath: file.ntFilePath,
+                picHeight: file.imageInfo.height,
+                picWidth: file.imageInfo.width,
+                picType
             }
         })
     }
@@ -125,8 +125,8 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 fileName: filename,
                 filePath: res.filePath,
                 fileSize: String(res.fileSize),
-                thumbFileSize: 750,
-            },
+                thumbFileSize: 750
+            }
         })
     }
 
@@ -144,28 +144,46 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         if (!ctx.silk) {
             throw new Error('发送语音需确保已安装并启用 silk 插件')
         }
-        if (ctx.silk.isWav(voice)) {
-            const silk = await ctx.silk.encode(voice, 0)
-            voice = silk.data
-            duration = Math.round(silk.duration / 1000)
-        } else if (!toUTF8String(voice, 0, 7).includes('#!SILK')) {
+
+        const convert = async (voice: ArrayBuffer, sampleRate: number) => {
             let data: Buffer
             const input = Buffer.from(voice)
             if (ctx.ffmpeg) {
-                data = await ctx.ffmpeg.builder().input(input).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
+                data = await ctx.ffmpeg.builder().input(input).outputOption('-ar', String(sampleRate), '-ac', '1', '-f', 's16le').run('buffer')
             } else {
-                data = await convertToPcm(input)
+                data = await convertToPcm(input, String(sampleRate))
             }
-            const silk = await ctx.silk.encode(data, 24000)
+            return data
+        }
+
+        if (ctx.silk.isWav(voice)) {
+            if (!ctx.silk.getWavFileInfo) {
+                throw new Error('请更新 silk 插件至最新版本')
+            }
+            const allowSampleRate = [8000, 12000, 16000, 24000, 32000, 44100, 48000]
+            const { fmt } = ctx.silk.getWavFileInfo(voice)
+            if (!allowSampleRate.includes(fmt.sampleRate)) {
+                const pcm = await convert(voice, 24000)
+                const silk = await ctx.silk.encode(pcm, 24000)
+                voice = silk.data
+                duration = Math.round(silk.duration / 1000)
+            } else {
+                const silk = await ctx.silk.encode(voice, 0)
+                voice = silk.data
+                duration = Math.round(silk.duration / 1000)
+            }
+        } else if (!toUTF8String(voice, 0, 7).includes('#!SILK')) {
+            const pcm = await convert(voice, 24000)
+            const silk = await ctx.silk.encode(pcm, 24000)
             voice = silk.data
             duration = Math.round(silk.duration / 1000)
         }
         duration ||= Math.round(ctx.silk.getDuration(voice) / 1000)
 
-        const payload = new FormData()
+        const form = new FormData()
         const blob = new Blob([voice], { type: 'audio/amr' })
-        payload.append('file', blob, 'file.amr')
-        const file = await this.bot.internal.uploadFile(payload)
+        form.append('file', blob, 'file.amr')
+        const file = await this.bot.internal.uploadFile(form)
 
         this.payload.elements.push({
             elementType: 4,
@@ -175,10 +193,10 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 fileName: basename(file.ntFilePath),
                 filePath: file.ntFilePath,
                 waveAmplitudes: [
-                    99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+                    99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99
                 ],
                 duration,
-                formatType: 1,
+                formatType: 1
             }
         })
     }
@@ -198,10 +216,10 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     private async video(attrs: Dict) {
         const { data, filename, mime } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
 
-        const payload = new FormData()
+        const form = new FormData()
         const blob = new Blob([data], { type: mime || 'application/octet-stream' })
-        payload.append('file', blob, 'file' + extname(filename))
-        const file = await this.bot.internal.uploadFile(payload)
+        form.append('file', blob, 'file' + extname(filename))
+        const file = await this.bot.internal.uploadFile(form)
 
         let filePath = file.ntFilePath.replaceAll('\\', '/')
         const fileName = basename(filePath)
@@ -240,8 +258,8 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 fileSize: String(file.fileSize),
                 thumbSize: thumb.byteLength,
                 thumbWidth,
-                thumbHeight,
-            },
+                thumbHeight
+            }
         })
     }
 
