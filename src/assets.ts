@@ -1,6 +1,8 @@
 import { Context, sanitize, trimSlash, Quester, Dict } from 'koishi'
 import { RedBot } from './bot'
 import { Message } from './types'
+import { Readable } from 'node:stream'
+import { ReadableStream } from 'node:stream/web'
 import { } from '@koishijs/plugin-server'
 
 export class RedAssets<C extends Context = Context> {
@@ -23,14 +25,6 @@ export class RedAssets<C extends Context = Context> {
         })).toString('base64url')
         return `${this.selfUrl}${this.path}/${payload}`
     }
-    get(payload: Dict) {
-        return this.bot.internal.getFile({
-            msgId: payload.msgId,
-            chatType: payload.chatType,
-            peerUid: payload.peerUid,
-            elementId: payload.elementId,
-        })
-    }
     private get selfUrl() {
         if (this.config.selfUrl) {
             return trimSlash(this.config.selfUrl)
@@ -44,7 +38,7 @@ export class RedAssets<C extends Context = Context> {
             ctx.body = '200 OK'
             ctx.status = 200
         })
-        this.bot.ctx.server.get(this.path + '/:data', async (ctx) => {
+        this.bot.ctx.server.get(this.path + '/:data', async (ctx, next) => {
             const data = ctx.params['data']
             let payload: Dict
             if (data.endsWith('=')) {
@@ -53,34 +47,38 @@ export class RedAssets<C extends Context = Context> {
                 payload = JSON.parse(Buffer.from(data, 'base64url').toString())
             }
             const mime = payload.mime
-            let response: Quester.Response<ArrayBuffer>
+            let file: Quester.Response<ReadableStream>
             try {
-                response = await this.get(payload)
+                file = await this.bot.internal.getFileStream({
+                    msgId: payload.msgId,
+                    chatType: payload.chatType,
+                    peerUid: payload.peerUid,
+                    elementId: payload.elementId,
+                })
             } catch (err) {
                 if (!Quester.Error.is(err)) {
                     throw err
                 }
                 if (mime.includes('image')) {
                     try {
-                        response = await this.bot.ctx.http(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${payload.md5.toUpperCase()}/0`, {
+                        file = await this.bot.ctx.http<ReadableStream>(`https://gchat.qpic.cn/gchatpic_new/0/0-0-${payload.md5.toUpperCase()}/0`, {
                             method: 'GET',
-                            responseType: 'arraybuffer'
+                            responseType: 'stream'
                         })
                     } catch { }
                 }
-                response ||= err.response
+                file ||= err.response
             }
 
-            const { headers } = response
-            const contentType = headers.get('content-type')
-
-            ctx.status = response.status
+            ctx.status = file.status
+            const contentType = file.headers.get('content-type')
             if (contentType) {
                 ctx.type = contentType
-            } else if (response.status === 200) {
+            } else if (file.status === 200) {
                 ctx.type = mime
             }
-            ctx.body = Buffer.from(response.data)
+            ctx.body = Readable.fromWeb(file.data)
+            return next()
         })
     }
 }

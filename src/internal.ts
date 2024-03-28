@@ -45,10 +45,18 @@ export class Internal {
     }
 
     getFile(data: Red.MessageFetchRichMediaPayload) {
-        return this.http<ArrayBuffer>('/api/message/fetchRichMedia', {
+        return this.http('/api/message/fetchRichMedia', {
             method: 'POST',
             data,
             responseType: 'arraybuffer'
+        })
+    }
+
+    getFileStream<T extends ReadableStream = ReadableStream>(data: Red.MessageFetchRichMediaPayload) {
+        return this.http<T>('/api/message/fetchRichMedia', {
+            method: 'POST',
+            data,
+            responseType: 'stream'
         })
     }
 

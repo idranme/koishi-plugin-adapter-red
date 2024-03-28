@@ -98,7 +98,7 @@ export async function decodeMessage(
                     let url: string
                     if (originImageUrl?.startsWith('/gchatpic_new')) {
                         url = `https://c2cpicdw.qpic.cn${originImageUrl}`
-                    } else if (originImageUrl?.startsWith('/download')) {
+                    } else if (originImageUrl?.startsWith('/download') && originImageUrl.includes('rkey=')) {
                         url = `https://multimedia.nt.qq.com.cn${originImageUrl}`
                     }
                     url ||= bot.redAssets.set(data, v.elementId, mime, md5HexStr)
