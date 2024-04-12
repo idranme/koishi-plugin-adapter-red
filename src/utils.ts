@@ -37,9 +37,9 @@ export const decodeGuildMember = ({ detail }: { detail: Member }): Universal.Gui
 })
 
 export const decodeEventUser = (data: Message): Universal.User => ({
-    id: data.senderUin,
+    id: data.senderUin === '0' ? null : data.senderUin,
     name: data.sendNickName,
-    avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${data.senderUin}&spec=640`,
+    avatar: `http://q.qlogo.cn/headimg_dl?dst_uin=${data.senderUin}&spec=640`
 })
 
 export const decodeEventGuildMember = (data: Message): Universal.GuildMember => ({

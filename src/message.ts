@@ -50,6 +50,10 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         this.payload.elements = []
     }
 
+    private fetchFile(url: string, options: Dict = {}) {
+        return this.bot.ctx.http.file(url, options)
+    }
+
     private text(content: string) {
         this.payload.elements.push({
             elementType: 1,
@@ -83,7 +87,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private async image(attrs: Dict) {
         const url = attrs.src || attrs.url.toString()
-        const { data, mime, filename } = await this.bot.ctx.http.file(url, attrs)
+        const { data, mime, filename } = await this.fetchFile(url, attrs)
         if (mime?.includes('text')) {
             this.bot.logger.warn(`try to send an image using a URL that may not be pointing to the image, which is ${url}`)
         }
@@ -113,7 +117,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async file(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
+        const { data, filename, mime } = await this.fetchFile(attrs.src || attrs.url, attrs)
         const form = new FormData()
         const blob = new Blob([data], { type: mime || 'application/octet-stream' })
         form.append('file', blob, filename)
@@ -136,7 +140,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async audio(attrs: Dict) {
-        const { data } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
+        const { data } = await this.fetchFile(attrs.src || attrs.url, attrs)
         let voice: ArrayBuffer | Uint8Array = data
         let duration: number
 
@@ -214,7 +218,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async video(attrs: Dict) {
-        const { data, filename, mime } = await this.bot.ctx.http.file(attrs.src || attrs.url, attrs)
+        const { data, filename, mime } = await this.fetchFile(attrs.src || attrs.url, attrs)
 
         const form = new FormData()
         const blob = new Blob([data], { type: mime || 'application/octet-stream' })
@@ -347,7 +351,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 await this.render(children)
                 const prev = this.payload.elements.at(-1)
                 if (prev?.elementType === 1 && prev.textElement.atType === 0) {
-                    prev.textElement.content += ` (${attrs.href})`
+                    prev.textElement.content += ` ( ${attrs.href} )`
                 }
                 break
             }
