@@ -70,7 +70,7 @@ export async function decodeMessage(
 
     const parse = async (data: Message, skipQuoteElement = false) => {
         const result: h[] = []
-        for (const v of data.elements) {
+        for (const v of data.elements ?? []) {
             let newElement: h
             switch (v.elementType) {
                 case 1: {
@@ -133,20 +133,18 @@ export async function decodeMessage(
                 }
                 case 7: {
                     if (skipQuoteElement) continue
-                    const { senderUid, replayMsgSeq, replayMsgId } = v.replyElement
+                    const { replayMsgSeq, replayMsgId } = v.replyElement
                     const msgId = replayMsgId !== '0' ? replayMsgId : bot.redSeq.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
-                    if (msgId) {
-                        const record = data.records[0]
-                        const elements = record && await parse(record, true)
-                        message.quote = {
-                            id: msgId,
-                            user: {
-                                id: senderUid,
-                                name: record?.sendMemberName || record?.sendNickName
-                            },
-                            content: elements?.join(''),
-                            elements
-                        }
+                    const record = data.records[0]
+                    const elements = record && await parse(record, true)
+                    message.quote = {
+                        id: msgId,
+                        user: {
+                            id: record?.senderUin === '0' ? null : record?.senderUin,
+                            name: record?.sendMemberName || record?.sendNickName
+                        },
+                        content: elements?.join?.(''),
+                        elements
                     }
                     break
                 }
@@ -229,7 +227,7 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
             session.type = 'message'
             session.subtype = data.chatType === 2 ? 'group' : 'private'
             await decodeMessage(bot, data, session.event.message = {}, session.event)
-            if (!session.content) return
+            if (session.content.length === 0) return
             return session
         }
     }

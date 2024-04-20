@@ -1,4 +1,4 @@
-import { Bot, Context, Schema, Quester, Universal, trimSlash } from 'koishi'
+import { Bot, Context, Schema, Quester, Universal } from 'koishi'
 import { WsClient } from './ws'
 import { Message } from './types'
 import { RedMessageEncoder } from './message'
@@ -14,7 +14,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
     http: Quester
     internal: Internal
-    redSeq = new Map()
+    redSeq: Map<string, string>
     redAssets: RedAssets
 
     constructor(ctx: C, config: RedBot.Config) {
@@ -24,21 +24,20 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
             ...config,
             headers: {
                 Authorization: `Bearer ${config.token}`,
-                ...config.headers,
-            },
+                ...config.headers
+            }
         })
         this.internal = new Internal(this.http)
-        setTimeout(() => {
-            this.redAssets = new RedAssets(this, config)
-        }, 0)
+        this.redSeq = new Map()
+        this.redAssets = new RedAssets(this, config)
         ctx.plugin(WsClient, this)
     }
 
-    async createDirectChannel(userId: string) {
+    async createDirectChannel(userId: string, guildId?: string) {
         return { id: 'private:' + userId, type: Universal.Channel.Type.DIRECT }
     }
 
-    async getGuildList(_next?: string) {
+    async getGuildList(next?: string) {
         const res = await this.internal.getGroups()
         return { data: res.map(decodeGuild) }
     }
@@ -61,7 +60,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         }
     }
 
-    async getGuildMemberList(guildId: string, _next?: string) {
+    async getGuildMemberList(guildId: string, next?: string) {
         const res = await this.internal.getGroupMembers({
             group: +guildId,
             size: 3000
@@ -86,31 +85,31 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         })
     }
 
-    async muteGuildMember(guildId: string, userId: string, duration?: number, reason?: string) {
-        const res = await this.internal.muteGroupMembers({
+    async muteGuildMember(guildId: string, userId: string, duration: number, reason?: string) {
+        const { result, errMsg } = await this.internal.muteGroupMembers({
             group: guildId,
             memList: [{
                 uin: userId,
                 timeStamp: + (duration / 1000).toFixed(0)
             }]
         })
-        if (res.result === 316) {
+        if (result === 316) {
             throw new Error('USERID_IS_INVAILD')
         }
-        if (res.result !== 0) {
-            if (res.errMsg.startsWith('ERR_')) {
-                throw new Error(res.errMsg.replace('ERR_', ''))
+        if (result !== 0) {
+            if (errMsg.startsWith('ERR_')) {
+                throw new Error(errMsg.replace('ERR_', ''))
             }
             throw new Error('UNKNOWN_ANOMALY')
         }
     }
 
-    async getFriendList(_next?: string) {
+    async getFriendList(next?: string) {
         const res = await this.internal.getFriends()
         return { data: res.map(decodeUser) }
     }
 
-    async getUser(userId: string) {
+    async getUser(userId: string, guildId?: string) {
         //const res = await this.internal.getFriends()
         //const user = res.find((element) => element.uin === userId)
         return {
@@ -120,22 +119,22 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     }
 
     async getMessageList(channelId: string, next?: string) {
-        const res = await this.internal.getMessages({
+        const { msgList } = await this.internal.getMessages({
             peer: getPeer(channelId),
             offsetMsgId: next,
             count: 100
         })
-        const data = await Promise.all(res.msgList.map((data: Message) => decodeMessage(this, data)))
+        const data = await Promise.all(msgList.map((data: Message) => decodeMessage(this, data)))
         return { data, next: data[0]?.id }
     }
 
     async getMessage(channelId: string, messageId: string) {
-        const res = await this.internal.getMessages({
+        const { msgList } = await this.internal.getMessages({
             peer: getPeer(channelId),
             offsetMsgId: messageId,
             count: 1
         })
-        return await decodeMessage(this, res.msgList[0])
+        return await decodeMessage(this, msgList[0])
     }
 
     async getLogin() {
@@ -144,7 +143,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         return this.toJSON()
     }
 
-    async getChannelList(guildId: string) {
+    async getChannelList(guildId: string, next?: string) {
         const res = await this.internal.getGroups()
         const channel = res.find((element) => element.groupCode === guildId)
         return { data: [decodeChannel(channel)] }

@@ -7,13 +7,16 @@ import { } from '@koishijs/plugin-server'
 
 export class RedAssets<C extends Context = Context> {
     private path: string
+
     constructor(private bot: RedBot<C>, private config: RedBot.Config) {
         const num = Number(bot.selfId) || 0
         const unique = num.toString(32)
         this.path = sanitize(`${config.path || '/files'}/${unique}`)
-        this.listen()
-        bot.logger.info(`assets are located at ${this.selfUrl}${this.path}`)
+        bot.ctx.setTimeout(() => {
+            this.listen()
+        }, 0)
     }
+
     set(message: Message, elementId: string, mime: string, md5: string) {
         const payload = Buffer.from(JSON.stringify({
             msgId: message.msgId,
@@ -25,23 +28,29 @@ export class RedAssets<C extends Context = Context> {
         })).toString('base64url')
         return `${this.selfUrl}${this.path}/${payload}`
     }
+
     private get selfUrl() {
         if (this.config.selfUrl) {
             return trimSlash(this.config.selfUrl)
         }
         const { server } = this.bot.ctx
-        let host = server?.host ?? '127.0.0.1'
-        if (['0.0.0.0', '::'].includes(host)) {
+        let host = server?.host
+        if (['0.0.0.0', '::', undefined].includes(host)) {
             host = '127.0.0.1'
         }
         return server?.selfUrl || `http://${host}:${server?.port}`
     }
+    
     private listen() {
         this.bot.ctx.on('server/ready', () => {
-            this.bot.ctx.server.get(this.path, async (ctx) => {
+            this.bot.logger.info(`assets are located at ${this.selfUrl}${this.path}`)
+
+            this.bot.ctx.server.get(this.path, async (ctx, next) => {
                 ctx.body = '200 OK'
                 ctx.status = 200
+                return next()
             })
+
             this.bot.ctx.server.get(this.path + '/:data', async (ctx, next) => {
                 const data = ctx.params['data']
                 let payload: Dict
