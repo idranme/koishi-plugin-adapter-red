@@ -68,9 +68,17 @@ export async function decodeMessage(
 ) {
     message.id = data.msgId
 
-    const parse = async (data: Message, msgId: string, skipQuoteElement = false) => {
+    const parse = async (data: Message, msgId?: string, skipQuoteElement = false) => {
         const result: h[] = []
-        for (const v of data.elements ?? []) {
+        const elements = data.elements ?? []
+        for (const [i, v] of elements.entries()) {
+            let elementId = v.elementId
+            if (msgId) {
+                const bigint = BigInt(msgId) - BigInt(elements.length - i)
+                elementId = bigint.toString()
+            } else {
+                msgId = data.msgId
+            }
             let newElement: h
             switch (v.elementType) {
                 case 1: {
@@ -101,7 +109,7 @@ export async function decodeMessage(
                     } else if (originImageUrl?.startsWith('/download') && originImageUrl.includes('rkey=')) {
                         url = `https://multimedia.nt.qq.com.cn${originImageUrl}`
                     }
-                    url ||= bot.redAssets.set(data, v.elementId, mime, md5HexStr, msgId)
+                    url ||= bot.redAssets.set(data, elementId, mime, md5HexStr, msgId)
                     newElement = h.image(url, {
                         width: picWidth,
                         height: picHeight,
@@ -114,12 +122,12 @@ export async function decodeMessage(
                     break
                 }
                 case 4: {
-                    const url = bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr, msgId)
+                    const url = bot.redAssets.set(data, elementId, 'audio/amr', v.pttElement.md5HexStr, msgId)
                     newElement = h.audio(url, { duration: v.pttElement.duration })
                     break
                 }
                 case 5: {
-                    newElement = h.video(bot.redAssets.set(data, v.elementId, 'application/octet-stream', v.videoElement.videoMd5, msgId))
+                    newElement = h.video(bot.redAssets.set(data, elementId, 'application/octet-stream', v.videoElement.videoMd5, msgId))
                     break
                 }
                 case 6: {
@@ -154,7 +162,7 @@ export async function decodeMessage(
         return result
     }
 
-    const elements = await parse(data, data.msgId)
+    const elements = await parse(data)
     if (bot.config.splitMixedContent) {
         for (const [index, item] of elements.entries()) {
             if (item.type !== 'img') continue
