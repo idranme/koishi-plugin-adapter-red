@@ -40,7 +40,7 @@ export class RedAssets<C extends Context = Context> {
         }
         return server?.selfUrl || `http://${host}:${server?.port}`
     }
-    
+
     private listen() {
         this.bot.ctx.on('server/ready', () => {
             this.bot.logger.info(`assets are located at ${this.selfUrl}${this.path}`)
@@ -90,7 +90,7 @@ export class RedAssets<C extends Context = Context> {
                 } else if (file.status === 200) {
                     ctx.type = mime
                 }
-                ctx.body = Readable.fromWeb(file.data)
+                ctx.body = file.data instanceof ArrayBuffer ? Buffer.from(file.data) : Readable.fromWeb(file.data)
                 return next()
             })
         })
