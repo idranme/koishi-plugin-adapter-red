@@ -68,7 +68,7 @@ export async function decodeMessage(
 ) {
     message.id = data.msgId
 
-    const parse = async (data: Message, skipQuoteElement = false) => {
+    const parse = async (data: Message, msgId: string, skipQuoteElement = false) => {
         const result: h[] = []
         for (const v of data.elements ?? []) {
             let newElement: h
@@ -101,7 +101,7 @@ export async function decodeMessage(
                     } else if (originImageUrl?.startsWith('/download') && originImageUrl.includes('rkey=')) {
                         url = `https://multimedia.nt.qq.com.cn${originImageUrl}`
                     }
-                    url ||= bot.redAssets.set(data, v.elementId, mime, md5HexStr)
+                    url ||= bot.redAssets.set(data, v.elementId, mime, md5HexStr, msgId)
                     newElement = h.image(url, {
                         width: picWidth,
                         height: picHeight,
@@ -114,12 +114,12 @@ export async function decodeMessage(
                     break
                 }
                 case 4: {
-                    const url = bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr)
+                    const url = bot.redAssets.set(data, v.elementId, 'audio/amr', v.pttElement.md5HexStr, msgId)
                     newElement = h.audio(url, { duration: v.pttElement.duration })
                     break
                 }
                 case 5: {
-                    newElement = h.video(bot.redAssets.set(data, v.elementId, 'application/octet-stream', v.videoElement.videoMd5))
+                    newElement = h.video(bot.redAssets.set(data, v.elementId, 'application/octet-stream', v.videoElement.videoMd5, msgId))
                     break
                 }
                 case 6: {
@@ -136,7 +136,7 @@ export async function decodeMessage(
                     const { replayMsgSeq, replayMsgId } = v.replyElement
                     const msgId = replayMsgId !== '0' ? replayMsgId : bot.redSeq.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
                     const record = data.records[0]
-                    const elements = record && await parse(record, true)
+                    const elements = record && await parse(record, msgId ?? '', true)
                     message.quote = {
                         id: msgId,
                         user: {
@@ -154,7 +154,7 @@ export async function decodeMessage(
         return result
     }
 
-    const elements = await parse(data)
+    const elements = await parse(data, data.msgId)
     if (bot.config.splitMixedContent) {
         for (const [index, item] of elements.entries()) {
             if (item.type !== 'img') continue

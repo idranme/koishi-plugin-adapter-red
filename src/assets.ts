@@ -17,9 +17,9 @@ export class RedAssets<C extends Context = Context> {
         }, 0)
     }
 
-    set(message: Message, elementId: string, mime: string, md5: string) {
+    set(message: Message, elementId: string, mime: string, md5: string, msgId: string) {
         const payload = Buffer.from(JSON.stringify({
-            msgId: message.msgId,
+            msgId,
             chatType: message.chatType,
             peerUid: message.peerUin,
             elementId,
