@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
   "description": "Red Protocol Adapter for Koishi",
-  "version": "3.1.6",
+  "version": "3.1.7",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -20,15 +20,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/idanran/koishi-plugin-adapter-red.git"
+    "url": "https://github.com/idranme/koishi-plugin-adapter-red.git"
   },
   "bugs": {
-    "url": "https://github.com/idanran/koishi-plugin-adapter-red/issues"
-  },
-  "author": {
-    "email": "idanran@outlook.com",
-    "name": "idanran",
-    "url": "https://github.com/idanran"
+    "url": "https://github.com/idranme/koishi-plugin-adapter-red/issues"
   },
   "peerDependencies": {
     "koishi": "^4.17.3"

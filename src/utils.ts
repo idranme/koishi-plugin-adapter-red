@@ -68,16 +68,15 @@ export async function decodeMessage(
 ) {
     message.id = data.msgId
 
-    const parse = async (data: Message, msgId?: string, skipQuoteElement = false) => {
+    const parse = async (data: Message, msgId?: string, firstElementId?: string, quoted = false) => {
         const result: h[] = []
         const elements = data.elements ?? []
+        msgId ??= data.msgId
         for (const [i, v] of elements.entries()) {
             let elementId = v.elementId
-            if (msgId) {
-                const bigint = BigInt(msgId) - BigInt(elements.length - i)
+            if (firstElementId) {
+                const bigint = BigInt(firstElementId) + BigInt(i)
                 elementId = bigint.toString()
-            } else {
-                msgId = data.msgId
             }
             let newElement: h
             switch (v.elementType) {
@@ -140,11 +139,12 @@ export async function decodeMessage(
                     break
                 }
                 case 7: {
-                    if (skipQuoteElement) continue
+                    if (quoted) continue
                     const { replayMsgSeq, replayMsgId } = v.replyElement
-                    const msgId = replayMsgId !== '0' ? replayMsgId : bot.redSeq.get(`${data.chatType}/${data.peerUin}/${replayMsgSeq}`)
+                    const key = `${data.chatType}/${data.peerUin}/${replayMsgSeq}`
+                    const [msgId, firstElementId] = replayMsgId !== '0' ? [replayMsgId] : (bot.redSeq.get(key) ?? [])
                     const record = data.records[0]
-                    const elements = record && await parse(record, msgId ?? '', true)
+                    const elements = record && await parse(record, msgId, firstElementId, true)
                     message.quote = {
                         id: msgId,
                         user: {
@@ -223,7 +223,7 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
     }
     if (input.type !== 'message::recv') return
 
-    bot.redSeq.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, data.msgId)
+    bot.redSeq.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, [data.msgId, data.elements[0]?.elementId])
 
     switch (data.msgType) {
         case 2:

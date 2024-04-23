@@ -14,7 +14,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
     static MessageEncoder = RedMessageEncoder
     http: Quester
     internal: Internal
-    redSeq: Map<string, string>
+    redSeq: Map<string, string[]>
     redAssets: RedAssets
 
     constructor(ctx: C, config: RedBot.Config) {
@@ -134,6 +134,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
             offsetMsgId: messageId,
             count: 1
         })
+        if (!msgList?.length) throw new Error('the message was not found')
         return await decodeMessage(this, msgList[0])
     }
 

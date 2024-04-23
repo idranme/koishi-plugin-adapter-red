@@ -38,12 +38,12 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             this.trim = false
         }
 
-        const res = await this.bot.internal.sendMessage(this.payload)
+        const data = await this.bot.internal.sendMessage(this.payload)
 
-        this.bot.redSeq.set(`${res.chatType}/${res.peerUin}/${res.msgSeq}`, res.msgId)
+        this.bot.redSeq.set(`${data.chatType}/${data.peerUin}/${data.msgSeq}`, [data.msgId, data.elements[0]?.elementId])
 
         const session = this.bot.session()
-        await decodeMessage(this.bot, res, session.event.message = {}, session.event)
+        await decodeMessage(this.bot, data, session.event.message = {}, session.event)
         this.results.push(session.event.message)
         session.app.emit(session, 'send', session)
 
