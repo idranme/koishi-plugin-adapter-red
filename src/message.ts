@@ -50,11 +50,11 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         this.payload.elements = []
     }
 
-    private fetchFile(url: string, options: Dict = {}) {
-        return this.bot.ctx.http.file(url, options)
+    private async fetchFile(url: string, options: Dict = {}) {
+        return await this.bot.ctx.http.file(url, options)
     }
 
-    private text(content: string) {
+    private async text(content: string) {
         this.payload.elements.push({
             elementType: 1,
             textElement: {
@@ -62,27 +62,6 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 content,
             }
         })
-    }
-
-    private at(attrs: Dict) {
-        if (attrs.type === 'all') {
-            this.payload.elements.push({
-                elementType: 1,
-                textElement: {
-                    content: '@全体成员',
-                    atType: 1,
-                }
-            })
-        } else {
-            this.payload.elements.push({
-                elementType: 1,
-                textElement: {
-                    content: attrs.name ? '@' + attrs.name : undefined,
-                    atType: 2,
-                    atNtUin: attrs.id
-                },
-            })
-        }
     }
 
     private async image(attrs: Dict) {
@@ -134,11 +113,6 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         })
     }
 
-    private face(attrs: Dict) {
-        const [faceIndex, faceType, stickerType, packId, stickerId] = attrs.id.split(':')
-        this.payload.elements.push({ elementType: 6, faceElement: { faceIndex, faceType, stickerType, packId, stickerId } })
-    }
-
     private async audio(attrs: Dict) {
         const { data } = await this.fetchFile(attrs.src || attrs.url, attrs)
         let voice: ArrayBuffer | Uint8Array = data
@@ -160,10 +134,8 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             return data
         }
 
+        if (!ctx.silk.isSilk) throw new Error('请更新 silk 插件至最新版本')
         if (ctx.silk.isWav(voice)) {
-            if (!ctx.silk.getWavFileInfo) {
-                throw new Error('请更新 silk 插件至最新版本')
-            }
             const allowSampleRate = [8000, 12000, 16000, 24000, 32000, 44100, 48000]
             const { fmt } = ctx.silk.getWavFileInfo(voice)
             if (!allowSampleRate.includes(fmt.sampleRate)) {
@@ -176,7 +148,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 voice = silk.data
                 duration = Math.round(silk.duration / 1000)
             }
-        } else if (!toUTF8String(voice, 0, 7).includes('#!SILK')) {
+        } else if (!ctx.silk.isSilk(voice)) {
             const pcm = await convert(voice, 24000)
             const silk = await ctx.silk.encode(pcm, 24000)
             voice = silk.data
@@ -201,18 +173,6 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 ],
                 duration,
                 formatType: 1
-            }
-        })
-    }
-
-    private quote(attrs: Dict) {
-        const senderUin = this.bot.selfId
-        this.payload.elements.push({
-            elementType: 7,
-            replyElement: {
-                replayMsgId: attrs.id,
-                senderUin,
-                senderUinStr: senderUin
             }
         })
     }
@@ -271,7 +231,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         const { type, attrs, children } = element
         switch (type) {
             case 'text': {
-                this.text(attrs.content)
+                await this.text(attrs.content)
                 break
             }
             case 'message': {
@@ -281,7 +241,24 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 break
             }
             case 'at': {
-                this.at(attrs)
+                if (attrs.type === 'all') {
+                    this.payload.elements.push({
+                        elementType: 1,
+                        textElement: {
+                            content: '@全体成员',
+                            atType: 1,
+                        }
+                    })
+                } else {
+                    this.payload.elements.push({
+                        elementType: 1,
+                        textElement: {
+                            content: attrs.name ? '@' + attrs.name : undefined,
+                            atType: 2,
+                            atNtUin: attrs.id
+                        },
+                    })
+                }
                 break
             }
             case 'img':
@@ -290,7 +267,17 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 break
             }
             case 'face': {
-                this.face(attrs)
+                const [faceIndex, faceType, stickerType, packId, stickerId] = attrs.id.split(':')
+                this.payload.elements.push({
+                    elementType: 6,
+                    faceElement: {
+                        faceIndex,
+                        faceType,
+                        stickerType,
+                        packId,
+                        stickerId
+                    }
+                })
                 break
             }
             case 'figure': {
@@ -306,7 +293,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                         prev.textElement.content += '\n'
                     }
                 } else {
-                    this.text('\n')
+                    await this.text('\n')
                 }
                 await this.render(children)
                 const last = this.payload.elements.at(-1)
@@ -315,7 +302,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                         last.textElement.content += '\n'
                     }
                 } else {
-                    this.text('\n')
+                    await this.text('\n')
                 }
                 break
             }
@@ -324,7 +311,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 if (prev?.elementType === 1 && prev.textElement.atType === 0) {
                     prev.textElement.content += '\n'
                 } else {
-                    this.text('\n')
+                    await this.text('\n')
                 }
                 break
             }
@@ -334,7 +321,15 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 break
             }
             case 'quote': {
-                this.quote(attrs)
+                const senderUin = this.bot.selfId
+                this.payload.elements.push({
+                    elementType: 7,
+                    replyElement: {
+                        replayMsgId: attrs.id,
+                        senderUin,
+                        senderUinStr: senderUin
+                    }
+                })
                 break
             }
             case 'file': {
@@ -353,6 +348,19 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 if (prev?.elementType === 1 && prev.textElement.atType === 0) {
                     prev.textElement.content += ` ( ${attrs.href} )`
                 }
+                break
+            }
+            case 'red:mface': {
+                const { id, name, key, packageId } = attrs
+                this.payload.elements.push({
+                    elementType: 11,
+                    marketFaceElement: {
+                        emojiPackageId: Number(packageId),
+                        faceName: `[${name}]`,
+                        emojiId: id,
+                        key
+                    }
+                })
                 break
             }
             default: {

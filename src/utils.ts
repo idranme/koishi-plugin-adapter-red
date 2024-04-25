@@ -156,6 +156,14 @@ export async function decodeMessage(
                     }
                     break
                 }
+                case 11: {
+                    const { emojiId, supportSize, faceName, key, emojiPackageId } = v.marketFaceElement
+                    const { width = 200, height = 200 } = supportSize?.[0] ?? {}
+                    const name = faceName.replace('[', '').replace(']', '')
+                    const url = `https://gxh.vip.qq.com/club/item/parcel/item/${emojiId.slice(0, 2)}/${emojiId}/raw${width}.gif`
+                    newElement = h('red:mface', { id: emojiId, name, key, packageId: String(emojiPackageId) }, [h.image(url, { width, height })])
+                    break
+                }
             }
             newElement && result.push(newElement)
         }
@@ -231,7 +239,8 @@ export async function adaptSession(bot: RedBot, input: WsPackage<Message[]>) {
         case 6:
         case 7:
         case 8:
-        case 9: {
+        case 9:
+        case 17: {
             session.type = 'message'
             session.subtype = data.chatType === 2 ? 'group' : 'private'
             await decodeMessage(bot, data, session.event.message = {}, session.event)

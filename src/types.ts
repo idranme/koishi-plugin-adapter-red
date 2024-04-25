@@ -304,7 +304,7 @@ export interface Element {
     inlineKeyboardElement?: InlineKeyboardElement
     liveGiftElement?: unknown
     markdownElement?: MarkdownElement
-    marketFaceElement?: unknown
+    marketFaceElement?: MarketFaceElement
     multiForwardMsgElement?: unknown
     pttElement?: PttElement
     replyElement?: ReplyElement
@@ -313,6 +313,39 @@ export interface Element {
     videoElement?: VideoElement
     walletElement?: unknown
     yoloGameResultElement?: unknown
+}
+
+export interface MarketFaceElement {
+    itemType: number
+    faceInfo: number
+    emojiPackageId: number
+    subType: number
+    mediaType: number
+    imageWidth: number
+    imageHeight: number
+    faceName: string
+    emojiId: string
+    key: string
+    param: unknown
+    mobileParam: unknown
+    sourceType: number
+    startTime: number
+    endTime: number
+    emojiType: number
+    hasIpProduct: number
+    voiceItemHeightArr: unknown
+    sourceName: unknown
+    sourceJumpUrl: unknown
+    sourceTypeName: string
+    backColor: unknown
+    volumeColor: unknown
+    staticFacePath: string
+    dynamicFacePath: string
+    supportSize: {
+        width: number
+        height: number
+    }[]
+    apngSupportSize: unknown
 }
 
 export interface MarkdownElement {
