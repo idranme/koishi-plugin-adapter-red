@@ -2,10 +2,11 @@ import { Dict, h, MessageEncoder, Context } from 'koishi'
 import { RedBot } from './bot'
 import { MessageSendPayload } from './types'
 import { convertToPcm, getVideoCover, calculatePngSize } from './media'
-import { basename, dirname, extname } from 'node:path'
-import { decodeMessage, getPeer, toUTF8String } from './utils'
-import { rename, mkdir, writeFile } from 'node:fs/promises'
+import { basename, dirname, extname, join } from 'node:path'
+import { decodeMessage, getPeer } from './utils'
+import { rename, mkdir, writeFile, unlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { } from 'koishi-plugin-ffmpeg'
 import { } from 'koishi-plugin-silk'
 
@@ -206,7 +207,10 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         // Original is JFIF
         let thumb: Buffer
         if (ctx.ffmpeg) {
-            thumb = await ctx.ffmpeg.builder().input(input).outputOption('-frames:v', '1', '-f', 'image2', '-codec', 'png', '-update', '1').run('buffer')
+            const path = join(tmpdir(), `adapter-red-${Date.now()}`)
+            await writeFile(path, input)
+            thumb = await ctx.ffmpeg.builder().input(path).outputOption('-frames:v', '1', '-f', 'image2', '-codec', 'png', '-update', '1').run('buffer')
+            unlink(path)
         } else {
             thumb = await getVideoCover(input)
         }
@@ -356,7 +360,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                     elementType: 11,
                     marketFaceElement: {
                         emojiPackageId: Number(packageId),
-                        faceName: `[${name}]`,
+                        faceName: `[${name ?? '商城表情'}]`,
                         emojiId: id,
                         key
                     }
