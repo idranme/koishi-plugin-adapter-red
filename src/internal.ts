@@ -1,8 +1,8 @@
-import { Quester } from 'koishi'
+import { HTTP } from 'koishi'
 import * as Red from './types'
 
 export class Internal {
-    constructor(private http: Quester) { }
+    constructor(private http: HTTP) { }
 
     uploadFile(file: FormData) {
         return this.http.post<Red.UploadResponse>('/api/upload', file)

@@ -84,8 +84,7 @@ export async function decodeMessage(
                     const { atType, atUid, content, atNtUin } = v.textElement
                     if (atType === 1) {
                         newElement = h('at', { type: 'all' })
-                    }
-                    if (atType === 2) {
+                    } else if (atType === 2) {
                         newElement = h.at(atNtUin || atUid, { name: content.replace('@', '') })
                     }
                     newElement ||= h.text(v.textElement.content)
@@ -140,9 +139,8 @@ export async function decodeMessage(
                 }
                 case 7: {
                     if (quoted) continue
-                    const { replayMsgSeq, replayMsgId } = v.replyElement
-                    const key = `${data.chatType}/${data.peerUin}/${replayMsgSeq}`
-                    const [msgId, firstElementId] = replayMsgId !== '0' ? [replayMsgId] : (bot.redSeq.get(key) ?? [])
+                    const key = `${data.chatType}/${data.peerUin}/${v.replyElement}`
+                    const [msgId, firstElementId] = bot.redSeq.get(key) ?? []
                     const record = data.records[0]
                     const elements = record && await parse(record, msgId, firstElementId, true)
                     message.quote = {
@@ -161,7 +159,12 @@ export async function decodeMessage(
                     const { width = 200, height = 200 } = supportSize?.[0] ?? {}
                     const name = faceName.replace('[', '').replace(']', '')
                     const url = `https://gxh.vip.qq.com/club/item/parcel/item/${emojiId.slice(0, 2)}/${emojiId}/raw${width}.gif`
-                    newElement = h('red:mface', { id: emojiId, name, key, packageId: String(emojiPackageId) }, [h.image(url, { width, height })])
+                    newElement = h('red:mface', {
+                        id: emojiId,
+                        name,
+                        key,
+                        packageId: String(emojiPackageId)
+                    }, [h.image(url, { width, height })])
                     break
                 }
             }
@@ -201,7 +204,7 @@ export async function decodeMessage(
     return message
 }
 
-const decodeGuildChannelId = (data: Message) => {
+function decodeGuildChannelId(data: Message) {
     if (data.chatType === 2) {
         return [data.peerUin, data.peerUin]
     } else if (data.chatType === 100) {

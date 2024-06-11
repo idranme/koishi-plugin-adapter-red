@@ -1,4 +1,4 @@
-import { Bot, Context, Schema, Quester, Universal } from 'koishi'
+import { Bot, Context, Schema, HTTP, Universal } from 'koishi'
 import { WsClient } from './ws'
 import { Message } from './types'
 import { RedMessageEncoder } from './message'
@@ -12,7 +12,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         optional: ['ffmpeg', 'silk']
     }
     static MessageEncoder = RedMessageEncoder
-    http: Quester
+    http: HTTP
     internal: Internal
     redSeq: Map<string, string[]>
     redAssets: RedAssets
@@ -118,7 +118,8 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
         }
     }
 
-    async getMessageList(channelId: string, next?: string) {
+    async getMessageList(channelId: string, next?: string, direction: Universal.Direction = 'before') {
+        if (direction !== 'before') throw new Error('Unsupported direction.')
         const { msgList } = await this.internal.getMessages({
             peer: getPeer(channelId),
             offsetMsgId: next,
@@ -152,7 +153,7 @@ export class RedBot<C extends Context = Context> extends Bot<C, RedBot.Config> {
 }
 
 export namespace RedBot {
-    export interface Config extends Quester.Config, WsClient.Options {
+    export interface Config extends HTTP.Config, WsClient.Options {
         token: string
         selfId: string
         path: string
@@ -170,7 +171,7 @@ export namespace RedBot {
             selfUrl: Schema.string().role('link').description('Koishi 服务暴露在公网的地址。缺省时将使用全局配置。')
         }).description('资源设置'),
         WsClient.Options,
-        Quester.createConfig('http://127.0.0.1:16530/'),
+        HTTP.createConfig('http://127.0.0.1:16530/'),
         Schema.object({
             splitMixedContent: Schema.boolean().default(false).description('是否自动在接收到的混合内容间插入空格。')
         }).description('高级设置'),

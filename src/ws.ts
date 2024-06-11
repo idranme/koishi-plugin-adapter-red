@@ -25,13 +25,13 @@ export class WsClient<C extends Context = Context> extends Adapter.WsClient<C, R
                 return this.bot.dispatch(this.bot.session({
                     type: 'internal',
                     _type: 'red/unsafe-notify',
-                    _data: parsed.payload[0],
+                    _data: parsed.payload[0]
                 }))
             } else if (parsed.type === 'message::recv') {
                 this.bot.dispatch(this.bot.session({
                     type: 'internal',
                     _type: 'red/unsafe-message',
-                    _data: parsed.payload[0],
+                    _data: parsed.payload[0]
                 }))
             }
 
@@ -53,6 +53,6 @@ export namespace WsClient {
     }
 
     export const Options: Schema<Options> = Schema.intersect([
-        Adapter.WsClientConfig,
+        Adapter.WsClientConfig
     ])
 }

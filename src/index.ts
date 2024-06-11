@@ -9,6 +9,6 @@ type RedEvents = {
     [T in keyof Red.GatewayEvents as `red/${ParamCase<T>}`]: (input: Red.GatewayEvents[T], bot: RedBot) => void
 }
 
-declare module '@satorijs/core' {
+declare module 'koishi' {
     interface Events extends RedEvents { }
 }

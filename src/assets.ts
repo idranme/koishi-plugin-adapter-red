@@ -1,4 +1,4 @@
-import { Context, sanitize, trimSlash, Quester, Dict } from 'koishi'
+import { Context, sanitize, trimSlash, HTTP, Dict } from 'koishi'
 import { RedBot } from './bot'
 import { Message } from './types'
 import { Readable } from 'node:stream'
@@ -45,14 +45,13 @@ export class RedAssets<C extends Context = Context> {
         this.bot.ctx.on('server/ready', () => {
             this.bot.logger.info(`assets are located at ${this.selfUrl}${this.path}`)
 
-            this.bot.ctx.server.get(this.path, async (ctx, next) => {
-                ctx.body = '200 OK'
-                ctx.status = 200
-                return next()
+            this.bot.ctx.server.get(this.path, async (koa) => {
+                koa.body = '200 OK'
+                koa.status = 200
             })
 
-            this.bot.ctx.server.get(this.path + '/:data', async (ctx, next) => {
-                const data = ctx.params['data']
+            this.bot.ctx.server.get(this.path + '/:data', async (koa) => {
+                const data = koa.params['data']
                 let payload: Dict
                 if (data.endsWith('=')) {
                     payload = JSON.parse(Buffer.from(data, 'base64').toString())
@@ -60,7 +59,7 @@ export class RedAssets<C extends Context = Context> {
                     payload = JSON.parse(Buffer.from(data, 'base64url').toString())
                 }
                 const mime = payload.mime
-                let file: Quester.Response<ReadableStream>
+                let file: HTTP.Response<ReadableStream>
                 try {
                     file = await this.bot.internal.getFileStream({
                         msgId: payload.msgId,
@@ -69,7 +68,7 @@ export class RedAssets<C extends Context = Context> {
                         elementId: payload.elementId,
                     })
                 } catch (err) {
-                    if (!Quester.Error.is(err)) {
+                    if (!HTTP.Error.is(err)) {
                         throw err
                     }
                     if (mime.includes('image')) {
@@ -83,15 +82,14 @@ export class RedAssets<C extends Context = Context> {
                     file ||= err.response
                 }
 
-                ctx.status = file.status
                 const contentType = file.headers.get('content-type')
                 if (contentType) {
-                    ctx.type = contentType
+                    koa.type = contentType
                 } else if (file.status === 200) {
-                    ctx.type = mime
+                    koa.type = mime
                 }
-                ctx.body = file.data instanceof ArrayBuffer ? Buffer.from(file.data) : Readable.fromWeb(file.data)
-                return next()
+                koa.body = file.data instanceof ArrayBuffer ? Buffer.from(file.data) : Readable.fromWeb(file.data)
+                koa.status = file.status
             })
         })
     }

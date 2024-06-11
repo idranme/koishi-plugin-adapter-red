@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-red",
   "description": "Red Protocol Adapter for Koishi",
-  "version": "3.1.9",
+  "version": "3.2.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -26,7 +26,7 @@
     "url": "https://github.com/idranme/koishi-plugin-adapter-red/issues"
   },
   "peerDependencies": {
-    "koishi": "^4.17.3"
+    "koishi": "^4.17.7"
   },
   "devDependencies": {
     "@koishijs/plugin-server": "^3.2.1",

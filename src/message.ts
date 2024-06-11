@@ -60,20 +60,20 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             elementType: 1,
             textElement: {
                 atType: 0,
-                content,
+                content
             }
         })
     }
 
     private async image(attrs: Dict) {
         const url = attrs.src || attrs.url.toString()
-        const { data, mime, filename } = await this.fetchFile(url, attrs)
-        if (mime?.includes('text')) {
+        const { data, type, filename } = await this.fetchFile(url, attrs)
+        if (type?.includes('text')) {
             this.bot.logger.warn(`try to send an image using a URL that may not be pointing to the image, which is ${url}`)
         }
         const form = new FormData()
-        const blob = new Blob([data], { type: mime || 'application/octet-stream' })
-        form.append('file', blob, 'file' + extname(filename))
+        const value = new Blob([data], { type })
+        form.append('file', value, 'file' + extname(filename))
         const file = await this.bot.internal.uploadFile(form)
 
         const picType = {
@@ -97,10 +97,10 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async file(attrs: Dict) {
-        const { data, filename, mime } = await this.fetchFile(attrs.src || attrs.url, attrs)
+        const { data, filename, type } = await this.fetchFile(attrs.src || attrs.url, attrs)
         const form = new FormData()
-        const blob = new Blob([data], { type: mime || 'application/octet-stream' })
-        form.append('file', blob, filename)
+        const value = new Blob([data], { type })
+        form.append('file', value, filename)
         const res = await this.bot.internal.uploadFile(form)
 
         this.payload.elements.push({
@@ -158,8 +158,8 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         duration ||= Math.round(ctx.silk.getDuration(voice) / 1000)
 
         const form = new FormData()
-        const blob = new Blob([voice], { type: 'audio/amr' })
-        form.append('file', blob, 'file.amr')
+        const value = new Blob([voice], { type: 'audio/amr' })
+        form.append('file', value, 'file.amr')
         const file = await this.bot.internal.uploadFile(form)
 
         this.payload.elements.push({
@@ -179,11 +179,11 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
     }
 
     private async video(attrs: Dict) {
-        const { data, filename, mime } = await this.fetchFile(attrs.src || attrs.url, attrs)
+        const { data, filename, type } = await this.fetchFile(attrs.src || attrs.url, attrs)
 
         const form = new FormData()
-        const blob = new Blob([data], { type: mime || 'application/octet-stream' })
-        form.append('file', blob, 'file' + extname(filename))
+        const value = new Blob([data], { type })
+        form.append('file', value, 'file' + extname(filename))
         const file = await this.bot.internal.uploadFile(form)
 
         let filePath = file.ntFilePath.replaceAll('\\', '/')
