@@ -139,7 +139,7 @@ export async function decodeMessage(
                 }
                 case 7: {
                     if (quoted) continue
-                    const key = `${data.chatType}/${data.peerUin}/${v.replyElement}`
+                    const key = `${data.chatType}/${data.peerUin}/${v.replyElement.replayMsgSeq}`
                     const [msgId, firstElementId] = bot.redSeq.get(key) ?? []
                     const record = data.records[0]
                     const elements = record && await parse(record, msgId, firstElementId, true)

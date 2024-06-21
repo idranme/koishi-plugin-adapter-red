@@ -143,19 +143,19 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 const pcm = await convert(voice, 24000)
                 const silk = await ctx.silk.encode(pcm, 24000)
                 voice = silk.data
-                duration = Math.round(silk.duration / 1000)
+                duration = silk.duration / 1000
             } else {
                 const silk = await ctx.silk.encode(voice, 0)
                 voice = silk.data
-                duration = Math.round(silk.duration / 1000)
+                duration = silk.duration / 1000
             }
         } else if (!ctx.silk.isSilk(voice)) {
             const pcm = await convert(voice, 24000)
             const silk = await ctx.silk.encode(pcm, 24000)
             voice = silk.data
-            duration = Math.round(silk.duration / 1000)
+            duration = silk.duration / 1000
         }
-        duration ||= Math.round(ctx.silk.getDuration(voice) / 1000)
+        duration ||= ctx.silk.getDuration(voice) / 1000
 
         const form = new FormData()
         const value = new Blob([voice], { type: 'audio/amr' })

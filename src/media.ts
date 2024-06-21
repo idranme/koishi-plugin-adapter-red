@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { exec } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { writeFile, unlink } from 'node:fs'
+import { writeFileSync, unlink } from 'node:fs'
 import { toUTF8String } from './utils'
 import { noop } from 'koishi'
 
@@ -12,15 +12,18 @@ function saveTmp(data: Buffer, ext?: string): string {
     ext = ext ? '.' + ext : ''
     const filename = `adapter-red-${Date.now()}${ext}`
     const tmpPath = join(TMP_DIR, filename)
-    writeFile(tmpPath, data, (err) => {
-        if (err) throw err
-    })
+    writeFileSync(tmpPath, data)
     return tmpPath
 }
 
-export function convertToPcm(buffer: Buffer, samplingRate = '24000'): Promise<Buffer> {
+export function convertToPcm(input: Buffer, samplingRate = '24000'): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-        const tmpPath = saveTmp(buffer)
+        let tmpPath: string
+        try {
+            tmpPath = saveTmp(input)
+        } catch (err) {
+            return reject(err)
+        }
         const targetPath = join(TMP_DIR, `adapter-red-${Date.now()}`)
         exec(`ffmpeg -y -i "${tmpPath}" -ar ${samplingRate} -ac 1 -f s16le "${targetPath}"`, async () => {
             unlink(tmpPath, noop)
@@ -38,7 +41,12 @@ export function convertToPcm(buffer: Buffer, samplingRate = '24000'): Promise<Bu
 
 export function getVideoCover(input: Buffer): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-        const tmpPath = saveTmp(input)
+        let tmpPath: string
+        try {
+            tmpPath = saveTmp(input)
+        } catch (err) {
+            return reject(err)
+        }
         const targetPath = join(TMP_DIR, `adapter-red-${Date.now()}`)
         exec(`ffmpeg -y -i "${tmpPath}" -frames:v 1 -f image2 -codec png -update 1 "${targetPath}"`, async () => {
             unlink(tmpPath, noop)
@@ -54,16 +62,16 @@ export function getVideoCover(input: Buffer): Promise<Buffer> {
     })
 }
 
-export function calculatePngSize(input: Buffer) {
+export function calculatePngSize(data: Buffer) {
     // Detect "fried" png's: http://www.jongware.com/pngdefry.html
-    if (toUTF8String(input, 12, 16) === 'CgBI') {
+    if (toUTF8String(data, 12, 16) === 'CgBI') {
         return {
-            height: input.readUInt32BE(36),
-            width: input.readUInt32BE(32)
+            height: data.readUInt32BE(36),
+            width: data.readUInt32BE(32)
         }
     }
     return {
-        height: input.readUInt32BE(20),
-        width: input.readUInt32BE(16)
+        height: data.readUInt32BE(20),
+        width: data.readUInt32BE(16)
     }
 }
