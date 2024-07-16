@@ -116,46 +116,37 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
 
     private async audio(attrs: Dict) {
         const { data } = await this.fetchFile(attrs.src || attrs.url, attrs)
+
         let voice: ArrayBuffer | Uint8Array = data
         let duration: number
 
-        const { ctx } = this.bot
-        if (!ctx.silk) {
-            throw new Error('发送语音需确保已安装并启用 silk 插件')
-        }
+        const { silk, ffmpeg } = this.bot.ctx
+        if (!silk) throw new Error('发送语音需确保已安装并启用 silk 插件')
+        if (!silk.isSilk) throw new Error('请更新 silk 插件至最新版本')
 
-        const convert = async (voice: ArrayBuffer, sampleRate: number) => {
-            let data: Buffer
+        const convert = async (voice: ArrayBuffer) => {
+            let output: Buffer
             const input = Buffer.from(voice)
-            if (ctx.ffmpeg) {
-                data = await ctx.ffmpeg.builder().input(input).outputOption('-ar', String(sampleRate), '-ac', '1', '-f', 's16le').run('buffer')
+            if (ffmpeg) {
+                output = await ffmpeg.builder().input(input).outputOption('-ar', '24000', '-ac', '1', '-f', 's16le').run('buffer')
             } else {
-                data = await convertToPcm(input, String(sampleRate))
+                output = await convertToPcm(input, '24000')
             }
-            return data
+            return output
         }
 
-        if (!ctx.silk.isSilk) throw new Error('请更新 silk 插件至最新版本')
-        if (ctx.silk.isWav(voice)) {
-            const allowSampleRate = [8000, 12000, 16000, 24000, 32000, 44100, 48000]
-            const { fmt } = ctx.silk.getWavFileInfo(voice)
-            if (!allowSampleRate.includes(fmt.sampleRate)) {
-                const pcm = await convert(voice, 24000)
-                const silk = await ctx.silk.encode(pcm, 24000)
-                voice = silk.data
-                duration = silk.duration / 1000
-            } else {
-                const silk = await ctx.silk.encode(voice, 0)
-                voice = silk.data
-                duration = silk.duration / 1000
-            }
-        } else if (!ctx.silk.isSilk(voice)) {
-            const pcm = await convert(voice, 24000)
-            const silk = await ctx.silk.encode(pcm, 24000)
-            voice = silk.data
-            duration = silk.duration / 1000
+        const allowSampleRate = [8000, 12000, 16000, 24000, 32000, 44100, 48000]
+        if (silk.isWav(voice) && allowSampleRate.includes(silk.getWavFileInfo(data).fmt.sampleRate)) {
+            const result = await silk.encode(voice, 0)
+            voice = result.data
+            duration = result.duration / 1000
+        } else if (!silk.isSilk(voice)) {
+            const pcm = await convert(voice)
+            const result = await silk.encode(pcm, 24000)
+            voice = result.data
+            duration = result.duration / 1000
         }
-        duration ||= ctx.silk.getDuration(voice) / 1000
+        duration ||= silk.getDuration(voice) / 1000
 
         const form = new FormData()
         const value = new Blob([voice], { type: 'audio/amr' })
@@ -202,14 +193,14 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         }
         let thumbPath = filePath.replace('/Ori/' + fileName, '/Thumb/' + fileName)
         thumbPath = thumbPath.replace(fileName, fileName.replace(extname(fileName), '') + '_0.png')
-        const { ctx } = this.bot
+        const { ffmpeg } = this.bot.ctx
         const input = Buffer.from(data)
         // Original is JFIF
         let thumb: Buffer
-        if (ctx.ffmpeg) {
+        if (ffmpeg) {
             const path = join(tmpdir(), `adapter-red-${Date.now()}`)
             await writeFile(path, input)
-            thumb = await ctx.ffmpeg.builder().input(path).outputOption('-frames:v', '1', '-f', 'image2', '-codec', 'png', '-update', '1').run('buffer')
+            thumb = await ffmpeg.builder().input(path).outputOption('-frames:v', '1', '-f', 'image2', '-codec', 'png', '-update', '1').run('buffer')
             unlink(path)
         } else {
             thumb = await getVideoCover(input)
