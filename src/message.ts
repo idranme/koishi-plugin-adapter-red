@@ -184,15 +184,15 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
         }
         if (!filePath.includes('/nt_data/Video/')) {
             const newPath = filePath.replace(/\/nt_data\/(.*?)\//, '/nt_data/Video/')
-            const targetFolder = dirname(newPath)
-            if (!existsSync(targetFolder)) {
-                await mkdir(targetFolder)
+            const videoDirectory = dirname(newPath)
+            if (!existsSync(videoDirectory)) {
+                await mkdir(videoDirectory)
             }
             await rename(filePath, newPath)
             filePath = newPath
         }
-        let thumbPath = filePath.replace('/Ori/' + fileName, '/Thumb/' + fileName)
-        thumbPath = thumbPath.replace(fileName, fileName.replace(extname(fileName), '') + '_0.png')
+        const thumbName = fileName.replace(extname(fileName), '_0.png')
+        const thumbPath = filePath.replace('/Ori/' + fileName, '/Thumb/' + thumbName)
         const { ffmpeg } = this.bot.ctx
         const input = Buffer.from(data)
         // Original is JFIF
@@ -204,6 +204,10 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
             unlink(path)
         } else {
             thumb = await getVideoCover(input)
+        }
+        const thumbDirectory = dirname(thumbPath)
+        if (!existsSync(thumbDirectory)) {
+            await mkdir(thumbDirectory)
         }
         await writeFile(thumbPath, thumb)
         const { height: thumbHeight, width: thumbWidth } = calculatePngSize(thumb)
@@ -311,6 +315,7 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 break
             }
             case 'audio': {
+                await this.flush()
                 await this.audio(attrs)
                 await this.flush()
                 break
@@ -328,11 +333,13 @@ export class RedMessageEncoder<C extends Context = Context> extends MessageEncod
                 break
             }
             case 'file': {
+                await this.flush()
                 await this.file(attrs)
                 await this.flush()
                 break
             }
             case 'video': {
+                await this.flush()
                 await this.video(attrs)
                 await this.flush()
                 break
